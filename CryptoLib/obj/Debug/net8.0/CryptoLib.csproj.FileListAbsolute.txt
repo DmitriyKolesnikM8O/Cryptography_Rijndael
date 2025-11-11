@@ -1,0 +1,12 @@
+/home/ares/Cryptography_Rijndael/CryptoLib/bin/Debug/net8.0/CryptoLib.deps.json
+/home/ares/Cryptography_Rijndael/CryptoLib/bin/Debug/net8.0/CryptoLib.dll
+/home/ares/Cryptography_Rijndael/CryptoLib/bin/Debug/net8.0/CryptoLib.pdb
+/home/ares/Cryptography_Rijndael/CryptoLib/obj/Debug/net8.0/CryptoLib.GeneratedMSBuildEditorConfig.editorconfig
+/home/ares/Cryptography_Rijndael/CryptoLib/obj/Debug/net8.0/CryptoLib.AssemblyInfoInputs.cache
+/home/ares/Cryptography_Rijndael/CryptoLib/obj/Debug/net8.0/CryptoLib.AssemblyInfo.cs
+/home/ares/Cryptography_Rijndael/CryptoLib/obj/Debug/net8.0/CryptoLib.csproj.CoreCompileInputs.cache
+/home/ares/Cryptography_Rijndael/CryptoLib/obj/Debug/net8.0/CryptoLib.sourcelink.json
+/home/ares/Cryptography_Rijndael/CryptoLib/obj/Debug/net8.0/CryptoLib.dll
+/home/ares/Cryptography_Rijndael/CryptoLib/obj/Debug/net8.0/refint/CryptoLib.dll
+/home/ares/Cryptography_Rijndael/CryptoLib/obj/Debug/net8.0/CryptoLib.pdb
+/home/ares/Cryptography_Rijndael/CryptoLib/obj/Debug/net8.0/ref/CryptoLib.dll

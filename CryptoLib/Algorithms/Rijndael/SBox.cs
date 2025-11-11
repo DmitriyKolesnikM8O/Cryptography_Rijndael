@@ -70,20 +70,16 @@ namespace CryptoLib.Algorithms.Rijndael
         private byte[] GenerateInverseSBox()
         {
             var invSbox = new byte[256];
+            // Прямая таблица SBoxTable вызовет генерацию, если она еще не была создана.
+            var sbox = this.SBoxTable;
+
+            // Если sbox[x] = y, то обратная таблица invSbox[y] = x.
+            // Это самый надежный способ получить обратную S-Box.
             for (int i = 0; i < 256; i++)
             {
-                byte b = (byte)i;
-                
-                // 1. Применяем обратное афинное преобразование
-                byte y = b;
-                byte result = (byte)(((y << 1) | (y >> 7)) ^ 
-                                     ((y << 3) | (y >> 5)) ^ 
-                                     ((y << 6) | (y >> 2)) ^ 
-                                     0x05); // 0x05 - константа из стандарта AES
-
-                // 2. Находим мультипликативный обратный элемент
-                invSbox[i] = GaloisFieldMath.Inverse(result, _irreduciblePolynomial);
+                invSbox[sbox[i]] = (byte)i;
             }
+
             return invSbox;
         }
     }

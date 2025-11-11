@@ -267,7 +267,7 @@ namespace CryptoLib.Algorithms.Rijndael
         }
 
         #endregion
-        
+
         #region Private Helper Methods for Decryption
 
         /// <summary>
@@ -284,7 +284,7 @@ namespace CryptoLib.Algorithms.Rijndael
                 }
             }
         }
-        
+
         /// <summary>
         /// Преобразование InvShiftRows: обратный циклический сдвиг строк состояния (вправо).
         /// </summary>
@@ -337,7 +337,17 @@ namespace CryptoLib.Algorithms.Rijndael
                 state[3, c] = (byte)(GaloisFieldMath.Multiply(tempCol[0], 0x0B, 0x1B) ^ GaloisFieldMath.Multiply(tempCol[1], 0x0D, 0x1B) ^ GaloisFieldMath.Multiply(tempCol[2], 0x09, 0x1B) ^ GaloisFieldMath.Multiply(tempCol[3], 0x0E, 0x1B));
             }
         }
-        
+
         #endregion
+
+        /// <summary>
+        /// ВРЕМЕННЫЙ МЕТОД ДЛЯ ОТЛАДКИ. Возвращает сгенерированные раундовые ключи.
+        /// </summary>
+        public byte[][]? GetRoundKeysForDebug()
+        {
+            return _roundKeys;
+        }
     }
+    
+    
 }

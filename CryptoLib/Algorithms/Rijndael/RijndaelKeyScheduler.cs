@@ -10,13 +10,11 @@ namespace CryptoLib.Algorithms.Rijndael
 
         /// <summary>
         /// Константы раундов (Rcon), используемые в процедуре расширения ключа.
-        /// Rcon[i] = [ RC[i], 0x00, 0x00, 0x00 ], где RC[1]=1, RC[i]=2*RC[i-1] в поле GF(2^8)
-        /// с модулем 0x11B.
+        /// Rcon[i] = [RC[i], 0, 0, 0], где RC[i] = x^(i-1) в поле GF(2^8).
         /// </summary>
         private static readonly byte[] Rcon = {
-            0x00, // Rcon[0] не используется
-            0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80,
-            0x1b, 0x36, 0x6c, 0xd8, 0xab, 0x4d, 0x9a
+            0x00, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80,
+            0x1B, 0x36
         };
 
         /// <summary>
@@ -29,7 +27,7 @@ namespace CryptoLib.Algorithms.Rijndael
         }
 
         /// <summary>
-        /// Выполняет расширение ключа.
+        /// Выполняет расширение ключа в точном соответствии со стандартом FIPS-197.
         /// </summary>
         /// <param name="key">Мастер-ключ.</param>
         /// <param name="blockSizeBytes">Размер блока в байтах.</param>
@@ -38,79 +36,70 @@ namespace CryptoLib.Algorithms.Rijndael
         /// <returns>Двумерный массив, содержащий раундовые ключи.</returns>
         public byte[][] ExpandKey(byte[] key, int blockSizeBytes, int keySizeBytes, int rounds)
         {
-            // Количество 4-байтных слов в ключе (Nk)
-            int nk = keySizeBytes / 4;
-            // Общее количество байт в расширенном ключе
-            int expandedKeySizeBytes = blockSizeBytes * (rounds + 1);
+            int nk = keySizeBytes / 4; // Количество 32-битных слов в ключе (4, 6, или 8)
+            int nb = blockSizeBytes / 4; // Количество 32-битных слов в блоке
 
-            // Создаем плоский массив для хранения всех байт расширенного ключа
-            var expandedKey = new byte[expandedKeySizeBytes];
-            // Копируем исходный мастер-ключ в начало
-            Array.Copy(key, 0, expandedKey, 0, keySizeBytes);
-
-            // Итерируемся, начиная с конца мастер-ключа, и генерируем оставшиеся байты
-            for (int i = keySizeBytes; i < expandedKeySizeBytes; i += 4)
-            {
-                // Берем предыдущее 4-байтное слово
-                var temp = new byte[4];
-                Array.Copy(expandedKey, i - 4, temp, 0, 4);
-
-                // Индекс текущего генерируемого слова
-                int currentWordIndex = i / 4;
-
-                // Если это начало нового блока ключа, применяем сложную трансформацию
-                if (currentWordIndex % nk == 0)
-                {
-                    temp = RotWord(temp);
-                    temp = SubWord(temp);
-                    temp[0] ^= Rcon[currentWordIndex / nk];
-                }
-                // Специальное правило для 256-битных ключей
-                else if (nk > 6 && currentWordIndex % nk == 4)
-                {
-                    temp = SubWord(temp);
-                }
-
-                // XOR с W[i-Nk] для получения нового слова W[i]
-                for (int j = 0; j < 4; j++)
-                {
-                    expandedKey[i + j] = (byte)(expandedKey[i - keySizeBytes + j] ^ temp[j]);
-                }
-            }
             
-            // Форматируем плоский массив в двумерный массив раундовых ключей
-            return FormatRoundKeys(expandedKey, blockSizeBytes, rounds);
-        }
+            // Общее количество 32-битных слов в расширенном ключе
+            int expandedKeyWordsCount = nb * (rounds + 1);
+            var w = new byte[expandedKeyWordsCount * 4];
 
-        /// <summary>
-        /// Применяет S-Box к каждому байту 4-байтного слова.
-        /// </summary>
-        private byte[] SubWord(byte[] word)
-        {
-            return new[]
+            // Шаг 1: Первые Nk слов расширенного ключа - это сам мастер-ключ
+            Array.Copy(key, w, keySizeBytes);
+
+            // Шаг 2: Генерируем оставшиеся слова
+            for (int i = nk; i < expandedKeyWordsCount; i++)
             {
-                _sBox.SBoxTable[word[0]],
-                _sBox.SBoxTable[word[1]],
-                _sBox.SBoxTable[word[2]],
-                _sBox.SBoxTable[word[3]]
-            };
+                // Берем предыдущее слово w[i-1]
+                var temp = new byte[4];
+                Array.Copy(w, (i - 1) * 4, temp, 0, 4);
+
+                // Если это первое слово нового блока ключа (i кратно Nk),
+                // применяем к нему сложную трансформацию g()
+                if (i % nk == 0)
+                {
+                    temp = SubWord(RotWord(temp));
+                    temp[0] ^= Rcon[i / nk];
+                }
+                // Для 256-битных ключей (Nk > 6), если i-4 кратно Nk,
+                // применяем дополнительную трансформацию h()
+                else if (nk > 6 && i % nk == 4)
+                {
+                    temp = SubWord(temp);
+                }
+
+                // Новое слово w[i] = w[i-Nk] XOR temp
+                int prevWordIndex = (i - nk) * 4;
+                int currentWordIndex = i * 4;
+
+                w[currentWordIndex]     = (byte)(w[prevWordIndex] ^ temp[0]);
+                w[currentWordIndex + 1] = (byte)(w[prevWordIndex + 1] ^ temp[1]);
+                w[currentWordIndex + 2] = (byte)(w[prevWordIndex + 2] ^ temp[2]);
+                w[currentWordIndex + 3] = (byte)(w[prevWordIndex + 3] ^ temp[3]);
+            }
+
+            return FormatRoundKeys(w, blockSizeBytes, rounds);
         }
 
         /// <summary>
-        /// Выполняет циклический сдвиг байтов в слове влево: [b0,b1,b2,b3] -> [b1,b2,b3,b0].
+        /// Применяет S-Box к каждому байту 4-байтного слова (операция SubWord).
         /// </summary>
-        private byte[] RotWord(byte[] word)
-        {
-            return new[] { word[1], word[2], word[3], word[0] };
-        }
+        private byte[] SubWord(byte[] word) => 
+            new[] { _sBox.SBoxTable[word[0]], _sBox.SBoxTable[word[1]], _sBox.SBoxTable[word[2]], _sBox.SBoxTable[word[3]] };
+        
+        /// <summary>
+        /// Выполняет циклический сдвиг байтов в слове влево: [b0,b1,b2,b3] -> [b1,b2,b3,b0] (операция RotWord).
+        /// </summary>
+        private byte[] RotWord(byte[] word) => 
+            new[] { word[1], word[2], word[3], word[0] };
 
         /// <summary>
-        /// Преобразует плоский массив расширенного ключа в массив раундовых ключей.
+        /// Преобразует плоский массив расширенного ключа в массив раундовых ключей для удобства использования.
         /// </summary>
         private byte[][] FormatRoundKeys(byte[] expandedKey, int blockSizeBytes, int rounds)
         {
             var roundKeys = new byte[rounds + 1][];
-            for (int i = 0; i < rounds + 1; i++)
+            for (int i = 0; i <= rounds; i++)
             {
                 roundKeys[i] = new byte[blockSizeBytes];
                 Array.Copy(expandedKey, i * blockSizeBytes, roundKeys[i], 0, blockSizeBytes);

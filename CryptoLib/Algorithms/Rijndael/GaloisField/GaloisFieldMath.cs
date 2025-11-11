@@ -1,3 +1,6 @@
+using System.Collections.Generic;
+using System.Numerics;
+
 namespace CryptoLib.Algorithms.Rijndael.GaloisField
 {
     /// <summary>
@@ -7,203 +10,161 @@ namespace CryptoLib.Algorithms.Rijndael.GaloisField
     public static class GaloisFieldMath
     {
         /// <summary>
-        /// Сложение двух элементов в поле GF(2^8).
-        /// Эквивалентно операции XOR.
+        /// Сложение двух элементов в поле GF(2^8). Эквивалентно операции XOR.
         /// </summary>
-        /// <param name="a">Первый операнд (байт).</param>
-        /// <param name="b">Второй операнд (байт).</param>
-        /// <returns>Результат сложения (байт).</returns>
-        public static byte Add(byte a, byte b)
-        {
-            return (byte)(a ^ b);
-        }
+        public static byte Add(byte a, byte b) => (byte)(a ^ b);
 
         /// <summary>
         /// Умножение двух элементов в поле GF(2^8) по заданному неприводимому полиному.
-        /// Реализует алгоритм "Russian Peasant Multiplication".
+        /// Это каноническая, исправленная реализация.
         /// </summary>
-        /// <param name="a">Первый множитель (байт).</param>
-        /// <param name="b">Второй множитель (байт).</param>
-        /// <param name="module">Неприводимый полином 8-й степени, используемый для редукции. 
-        /// Например, для AES это 0x11B (x^8 + x^4 + x^3 + x + 1).</param>
-        /// <returns>Результат умножения (байт).</returns>
-        public static byte Multiply(byte a, byte b, byte module)
+        public static byte Multiply(byte a, byte b, byte module = 0x1B)
         {
-            byte p = 0; // product
-
-            for (int i = 0; i < 8; i++)
+            byte result = 0;
+            byte hi_bit_set;
+            while (b > 0)
             {
-                // Если младший бит b равен 1, добавляем a к результату
                 if ((b & 1) == 1)
-                {
-                    p = Add(p, a); // p ^= a;
-                }
+                    result ^= a;
 
-                // Готовим b к следующей итерации
-                b >>= 1;
-
-                // Проверяем, произойдет ли "переполнение" при сдвиге a
-                bool highBitSet = (a & 0x80) == 0x80; // 0x80 это 1000 0000
-
-                // Умножаем a на x (сдвигаем влево)
+                hi_bit_set = (byte)(a & 0x80);
                 a <<= 1;
+                if (hi_bit_set != 0)
+                    a ^= module;
 
-                // Если было переполнение, выполняем редукцию по модулю
-                if (highBitSet)
-                {
-                    a = Add(a, module); // a ^= module;
-                }
+                b >>= 1;
             }
-
-            return p;
+            return result;
         }
 
+        
+        
         /// <summary>
-        /// Находит обратный элемент для заданного элемента в поле GF(2^8).
-        /// Обратный элемент a⁻¹ такой, что a * a⁻¹ ≡ 1 (mod module).
-        /// Использует Малую теорему Ферма: a⁻¹ = a^(254).
+        /// Находит обратный элемент для заданного элемента в поле GF(2^8)
+        /// по Малой теореме Ферма: a⁻¹ = a^(254).
         /// </summary>
-        /// <param name="element">Элемент, для которого нужно найти обратный.</param>
-        /// <param name="module">Неприводимый полином, определяющий поле.</param>
-        /// <returns>Обратный элемент. Обратный для 0 условно равен 0.</returns>
         public static byte Inverse(byte element, byte module)
         {
-            // Обратный элемент для 0 не определен, но в криптографии (например, в AES S-Box)
-            // его принято отображать в 0 для сохранения биективности.
-            if (element == 0)
-            {
-                return 0;
-            }
-
-            // По Малой теореме Ферма для поля GF(2^8), a⁻¹ = a^(256-2) = a^254
+            if (element == 0) return 0;
             return Power(element, 254, module);
         }
 
         /// <summary>
-        /// Возводит элемент поля в степень по заданному модулю.
-        /// Реализует алгоритм возведения в степень методом двоичного разложения (Exponentiation by Squaring).
+        /// Возводит элемент поля в степень по заданному модулю
+        /// методом двоичного разложения (Exponentiation by Squaring).
         /// </summary>
-        /// <param name="baseValue">Основание (элемент поля).</param>
-        /// <param name="exponent">Показатель степени.</param>
-        /// <param name="module">Неприводимый полином, определяющий поле.</param>
-        /// <returns>Результат возведения в степень.</returns>
         private static byte Power(byte baseValue, int exponent, byte module)
         {
             byte result = 1;
-            byte currentPower = baseValue;
-
             while (exponent > 0)
             {
-                // Если текущий бит степени равен 1
                 if ((exponent & 1) == 1)
-                {
-                    result = Multiply(result, currentPower, module);
-                }
-
-                // Переходим к следующему биту степени, возводя основание в квадрат
-                currentPower = Multiply(currentPower, currentPower, module);
-                exponent >>= 1; // Сдвигаем степень вправо
+                    result = Multiply(result, baseValue, module);
+                
+                baseValue = Multiply(baseValue, baseValue, module);
+                exponent >>= 1;
             }
-
             return result;
         }
-        
+
         /// <summary>
         /// Проверяет, является ли полином 8-й степени неприводимым над полем GF(2).
-        /// Полином представлен младшими 8 битами, старший бит x^8 подразумевается.
         /// </summary>
-        /// <remarks>
-        /// Полином P(x) степени 8 является неприводимым, если он не делится без остатка
-        /// на любой неприводимый полином степени от 1 до 4.
-        /// </remarks>
-        /// <param name="polynomialByte">Младшие 8 бит полинома 8-й степени.</param>
-        /// <returns>True, если полином неприводим, иначе false.</returns>
         public static bool IsIrreducible(byte polynomialByte)
         {
-            // Полином 8-й степени - это 9-битное число, где старший бит (x^8) всегда 1.
-            short polynomial = (short)(0x100 | polynomialByte);
+            if (polynomialByte == 0) return false;
+            // Полный список неприводимых полиномов степеней 1, 2, 3, 4.
+            int[] irreducibleFactors = {
+                0b10,      // x
+                0b11,      // x+1
+                0b101,     // x²+1
+                0b111,     // x²+x+1
+                0b1001,    // x³+1
+                0b1011,    // x³+x+1
+                0b1101,    // x³+x²+1
+                0b10001,   // x⁴+1
+                0b10011,   // x⁴+x+1
+                0b10101,   // x⁴+x²+1
+                0b10111,   // x⁴+x²+x+1
+                0b11001,   // x⁴+x³+1
+                0b11011,   // x⁴+x³+x+1
+                0b11101,   // x⁴+x³+x²+1
+                0b11111    // x⁴+x³+x²+x+1
+            };
+            
+            int p = 0x100 | polynomialByte;
 
-            // Тестовые неприводимые полиномы степеней от 1 до 4:
-            // deg(1): x+1 (0x03)
-            // deg(2): x^2+x+1 (0x07)
-            // deg(3): x^3+x+1 (0x0B), x^3+x^2+1 (0x0D)
-            // deg(4): x^4+x+1 (0x13), x^4+x^3+1 (0x19), x^4+x^3+x^2+x+1 (0x1F)
-            short[] testDivisors = { 0x03, 0x07, 0x0B, 0x0D, 0x13, 0x19, 0x1F };
-
-            foreach (var divisor in testDivisors)
+            foreach (var factor in irreducibleFactors)
             {
-                if (GetRemainder(polynomial, divisor) == 0)
-                {
-                    // Если делится без остатка, значит полином приводимый.
+                if (factor == 0b10) // x
+            {
+                if ((polynomialByte & 1) == 0) // младший коэффициент = 0 → делится на x
                     return false;
+                continue; // иначе — не делится
+            }
+                if (GetRemainder(p, factor) == 0)
+                {
+                    return false; // Найден делитель, полином приводим
                 }
             }
-            
-            // Если не разделился ни на один из тестовых, значит неприводимый.
             return true;
         }
 
         /// <summary>
         /// Находит все неприводимые двоичные полиномы 8-й степени.
         /// </summary>
-        /// <returns>Список байтов, представляющих неприводимые полиномы.</returns>
         public static List<byte> FindAllIrreduciblePolynomials()
         {
-            var irreduciblePolynomials = new List<byte>();
-            // Перебираем все возможные полиномы степени 7 и ниже.
-            // Вместе с подразумеваемым x^8 они образуют все полиномы 8-й степени.
+            var polynomials = new List<byte>();
             for (int i = 0; i <= 255; i++)
             {
-                if (IsIrreducible((byte)i))
-                {
-                    irreduciblePolynomials.Add((byte)i);
-                }
+                if (IsIrreducible((byte)i)) polynomials.Add((byte)i);
             }
-            return irreduciblePolynomials;
+            return polynomials;
         }
-
-        #region Private Helpers for Polynomial Division
 
         /// <summary>
         /// Выполняет деление полиномов в GF(2) и возвращает остаток.
         /// </summary>
-        /// <param name="dividend">Делимое (полином).</param>
-        /// <param name="divisor">Делитель (полином).</param>
-        /// <returns>Остаток от деления.</returns>
-        private static short GetRemainder(short dividend, short divisor)
+        private static int GetRemainder(int dividend, int divisor)
         {
-            int divisorDegree = GetPolynomialDegree(divisor);
-            while (GetPolynomialDegree(dividend) >= divisorDegree)
+            if (divisor == 0) return dividend;
+
+            // Обрезаем до 9 бит (x^8 + ... + 1)
+            dividend &= 0x1FF;
+
+            int divisorDeg = BitOperations.Log2((uint)divisor);
+
+            while (true)
             {
-                int degreeDifference = GetPolynomialDegree(dividend) - divisorDegree;
-                short alignedDivisor = (short)(divisor << degreeDifference);
-                dividend = (short)(dividend ^ alignedDivisor);
+                // Обрезаем ПЕРЕД Log2
+                int masked = dividend & 0x1FF;
+                if (masked == 0) break;
+
+                int dividendDeg = BitOperations.Log2((uint)masked);
+                if (dividendDeg < divisorDeg) break;
+
+                int shift = dividendDeg - divisorDeg;
+                dividend ^= (divisor << shift);
+
+                // Обрезаем ПОСЛЕ XOR
+                dividend &= 0x1FF;
             }
-            return dividend;
+
+            return dividend & 0xFF; // остаток — младшие 8 бит
         }
 
         /// <summary>
         /// Определяет степень полинома (позицию старшего установленного бита).
         /// </summary>
-        /// <param name="polynomial">Полином.</param>
-        /// <returns>Степень полинома.</returns>
-        private static int GetPolynomialDegree(short polynomial)
+        private static int GetPolynomialDegree(int polynomial)
         {
             if (polynomial == 0) return -1;
-            
-            short temp = polynomial;
-
-            // Можно было бы использовать логарифм, но побитовый сдвиг надежнее и нагляднее.
             for (int i = 15; i >= 0; i--)
             {
-                if (((temp >> i) & 1) == 1)
-                {
-                    return i;
-                }
+                if (((polynomial >> i) & 1) == 1) return i;
             }
             return -1;
         }
-
-        #endregion
     }
 }
