@@ -24,6 +24,10 @@ Cryptography_Rijndael/
 │       │
 │       └── Rijndael/                      # Всё, что относится к этой лабораторной работе
 │           │
+│           ├── Enums/                      
+│           │   ├── BlockSize.cs
+│           │   └── KeySize.cs
+│           │
 │           ├── GaloisField/               # (Задание 1) Реализация математики поля Галуа
 │           │   └── GaloisFieldMath.cs
 │           │

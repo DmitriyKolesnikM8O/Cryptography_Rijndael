@@ -191,8 +191,8 @@ namespace CryptoLib.Algorithms.Rijndael.GaloisField
         {
             if (polynomial == 0) return -1;
             
-            int degree = 0;
             short temp = polynomial;
+
             // Можно было бы использовать логарифм, но побитовый сдвиг надежнее и нагляднее.
             for (int i = 15; i >= 0; i--)
             {
