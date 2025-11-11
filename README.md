@@ -1,3 +1,4 @@
+```
 Cryptography_Rijndael/
 │
 ├── Cryptography_Rijndael.sln              # Файл всего решения
@@ -62,3 +63,4 @@ Cryptography_Rijndael/
     │   └── RijndaelCipherTests.cs         # Тесты против официальных векторов FIPS-197 (AES)
     │
     └── CryptoTests.csproj                 # Файл проекта, зависит от CryptoLib
+```
