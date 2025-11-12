@@ -31,6 +31,11 @@ namespace CryptoLib.Algorithms.Rijndael
         /// <param name="irreduciblePolynomial">Неприводимый полином для операций в поле GF(2^8).</param>
         public SBox(byte irreduciblePolynomial)
         {
+            // ПРОВЕРКА НА НЕПРИВОДИМОСТЬ
+            if (!GaloisFieldMath.IsIrreducible(irreduciblePolynomial))
+            {
+                throw new ArgumentException("Полином должен быть неприводимым.", nameof(irreduciblePolynomial));
+            }
             _irreduciblePolynomial = irreduciblePolynomial;
         }
 

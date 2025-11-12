@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CryptoLib", "CryptoLib\Cryp
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CryptoTests", "CryptoTests\CryptoTests.csproj", "{8C9EDD0B-5156-4E10-98EF-16C9D01F38BA}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CryptoDemo", "CryptoDemo\CryptoDemo.csproj", "{710AEACC-44AC-4CA5-A268-5DE528C7EAF5}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -24,5 +26,9 @@ Global
 		{8C9EDD0B-5156-4E10-98EF-16C9D01F38BA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8C9EDD0B-5156-4E10-98EF-16C9D01F38BA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8C9EDD0B-5156-4E10-98EF-16C9D01F38BA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{710AEACC-44AC-4CA5-A268-5DE528C7EAF5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{710AEACC-44AC-4CA5-A268-5DE528C7EAF5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{710AEACC-44AC-4CA5-A268-5DE528C7EAF5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{710AEACC-44AC-4CA5-A268-5DE528C7EAF5}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
