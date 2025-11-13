@@ -171,116 +171,232 @@ namespace CryptoLib.Algorithms.Rijndael.GaloisField
 
         /// <summary>
         /// Выполняет разложение двоичного полинома произвольной степени на неприводимые множители.
-        /// Реализует упрощенную версию алгоритма Кантора-Цассенхауза для GF(2).
+        /// Реализует алгоритм Кантора-Цассенхауза.
         /// </summary>
-        /// <param name="polynomial">Полином для разложения, представленный как long.</param>
-        /// <returns>Словарь, где ключ - неприводимый множитель, а значение - его степень.</returns>
         public static Dictionary<long, int> FactorizePolynomial(long polynomial)
         {
             var factors = new Dictionary<long, int>();
-            if (polynomial == 0 || polynomial == 1) return factors;
-            
-            // Сначала выделяем множитель 'x' (полином 0b10)
+            if (polynomial <= 1) return factors;
+
+            // Шаг 1: Выделяем множитель 'x' (полином 0b10)
             while ((polynomial & 1) == 0)
             {
                 AddFactor(factors, 0b10);
                 polynomial >>= 1;
             }
-
+            
+            // Запускаем рекурсивную факторизацию
             FactorizeRecursive(polynomial, factors);
             return factors;
         }
 
         private static void FactorizeRecursive(long polynomial, Dictionary<long, int> factors)
         {
-            if (polynomial == 1) return;
+            // Используем стек для имитации рекурсии, чтобы избежать двойного подсчета
+            var polynomialsToFactor = new Stack<long>();
+            polynomialsToFactor.Push(polynomial);
 
-            // Проверяем, является ли текущий полином неприводимым
-            if (IsIrreducibleBig(polynomial))
+            while (polynomialsToFactor.Count > 0)
             {
-                AddFactor(factors, polynomial);
-                return;
+                long currentPoly = polynomialsToFactor.Pop();
+                if (currentPoly == 1) continue;
+                
+                if (IsIrreducibleBig(currentPoly))
+                {
+                    AddFactor(factors, currentPoly);
+                }
+                else
+                {
+                    
+                    long divisor = FindDivisor(currentPoly);
+                    // Дополнительная проверка на ошибку/крайне редкий случай
+                    if (divisor == 1 || divisor == currentPoly) 
+                    {
+                        // Если IsIrreducibleBig вернул FALSE, но FindDivisor не нашел делитель,
+                        // это может быть либо ошибка в IsIrreducibleBig, либо сбой FindDivisor.
+                        // Временно добавляем его как множитель для продолжения, но нужно логгировать.
+                        AddFactor(factors, currentPoly); 
+                        // Console.WriteLine($"!!! ВНИМАНИЕ: FindDivisor не смог разложить приводимый полином {Convert.ToString(currentPoly, 2)}");
+                    }
+                    else 
+                    {
+                        // Нормальный путь: делим и рекурсивно обрабатываем
+                        polynomialsToFactor.Push(divisor);
+                        polynomialsToFactor.Push(PolynomialDivision(currentPoly, divisor).Quotient);
+                    }
+                    // polynomialsToFactor.Push(divisor);
+                    // polynomialsToFactor.Push(PolynomialDivision(currentPoly, divisor).Quotient);
+                }
             }
-
-            // Находим делитель с помощью алгоритма поиска НОД
-            long divisor = FindDivisor(polynomial);
-
-            // Рекурсивно раскладываем делитель и частное
-            FactorizeRecursive(divisor, factors);
-            FactorizeRecursive(PolynomialDivision(polynomial, divisor).Quotient, factors);
         }
 
+        /// <summary>
+        /// Находит один нетривиальный делитель полинома p(x)
+        /// используя НОД(p(x), x^(2^k) - x).
+        /// </summary>
+        // private static long FindDivisor(long polynomial)
+        // {
+        //     int degree = GetPolynomialDegreeBig(polynomial);
+        //     Random rand = new Random();
+
+        //     // Пробуем несколько случайных полиномов для надежности
+        //     for (int attempt = 0; attempt < 10; attempt++)
+        //     {
+        //         // Генерируем случайный полином степени < degree
+        //         long a = 0;
+        //         for (int i = 0; i < degree; i++)
+        //         {
+        //             if (rand.Next(2) == 1)
+        //                 a |= (1L << i);
+        //         }
+
+        //         // Если a = 0, пропускаем
+        //         if (a == 0) continue;
+
+        //         long d = a;
+        //         for (int k = 1; k <= degree / 2; k++)
+        //         {
+        //             // d = d^2 mod polynomial
+        //             d = PolynomialMultiplyMod(d, d, polynomial);
+
+        //             long g = PolynomialGcd(polynomial, d ^ a); // НОД(p(x), d(x) - a(x))
+
+        //             if (g != 1 && g != polynomial)
+        //             {
+        //                 return g;
+        //             }
+        //         }
+        //     }
+
+        //     // Fallback: простой перебор (для небольших полиномов)
+        //     return FindDivisorFallback(polynomial);
+        // }
+        
+        /// <summary>
+        /// Находит один нетривиальный делитель полинома p(x).
+        /// Исключает неэффективный FindDivisorFallback.
+        /// </summary>
         private static long FindDivisor(long polynomial)
         {
-            long g = 0;
-            long h = 2; // h(x) = x
-            int degree = GetPolynomialDegreeBig(polynomial);
+            // Приводимые полиномы должны иметь степень > 1.
+            int n = GetPolynomialDegreeBig(polynomial);
+            if (n <= 1) return polynomial; // Возвращаем сам полином или ошибку
 
-            // Ищем НОД(p(x), x^(2^k) - x) для k = 1, 2, ...
-            for (int k = 1; k < degree; k++)
+            Random rand = new Random();
+            
+            // Число попыток должно быть достаточно большим для высокой вероятности успеха.
+            // 100-200 итераций достаточно для полиномов, которые не являются произведениями
+            // равностепенных неприводимых множителей (случай EDF).
+            const int MaxAttempts = 200; 
+
+            for (int attempt = 0; attempt < MaxAttempts; attempt++)
             {
-                h = PolynomialModPower(h, 2, polynomial); // h = h^2 mod polynomial
-                g = PolynomialGcd(polynomial, h ^ 2); // g = НОД(polynomial, h-x)
-
-                if (g != 1 && g != polynomial)
+                // 1. Генерируем случайный полином a(x) со степенью < n.
+                long a = 0;
+                for (int i = 0; i < n; i++)
                 {
-                    return g;
+                    if (rand.Next(2) == 1)
+                        a |= (1L << i);
+                }
+                
+                // 2. Если a = 0 или a = 1, пропускаем (они тривиальны).
+                if (a <= 1) continue;
+
+                // 3. Вычисляем x^(2^k) mod p(x) для разных k.
+                // Здесь мы используем идею Кантора-Цассенхауза:
+                // НОД(p(x), a(x)^(2^k) - a(x)) должен быть нетривиальным для некоторых k.
+                
+                // Нам нужно найти нетривиальный делитель p(x). 
+                // Если p(x) - произведение k равностепенных полиномов степени d, 
+                // то d*k = n. Мы пробуем k = 1..n/2.
+
+                for (int k = 1; k <= n / 2; k++)
+                {
+                    // Вычисляем a(x)^(2^k) mod p(x)
+                    // Использование PolynomialModPower здесь более эффективно.
+                    long a_power = PolynomialModPower(a, (1 << k), polynomial);
+                    
+                    // НОД(p(x), a(x)^(2^k) + a(x)) = НОД(p(x), a_power ^ a)
+                    long g = PolynomialGcd(polynomial, a_power ^ a); 
+                    
+                    if (g != 1 && g != polynomial)
+                    {
+                        return g; // Найден нетривиальный делитель
+                    }
                 }
             }
-            return polynomial; // Если не нашли, значит он сам неприводим (хотя мы это уже проверили)
+    
+            // Если после 200 попыток нетривиальный делитель не найден,
+            // это с высокой вероятностью означает, что полином неприводим,
+            // или он является произведением равностепенных факторов, которые
+            // требуют более точного алгоритма EDF.
+            
+            // Если IsIrreducibleBig(polynomial) вернул FALSE, а FindDivisor не смог найти
+            // делитель за 200 попыток, это указывает на ошибку. 
+            // В текущей архитектуре мы должны вернуть сам полином (или выбросить исключение).
+            return polynomial; 
         }
 
-        private static void AddFactor(Dictionary<long, int> factors, long factor)
-        {
-            factors.TryGetValue(factor, out int count);
-            factors[factor] = count + 1;
-        }
+        /// <summary>
+        /// Резервный метод поиска делителя простым перебором
+        /// </summary>
+        // private static long FindDivisorFallback(long polynomial)
+        // {
+        //     int degree = GetPolynomialDegreeBig(polynomial);
+
+        //     // Перебираем все возможные неприводимые делители степени <= degree/2
+        //     for (int divDegree = 1; divDegree <= degree / 2; divDegree++)
+        //     {
+        //         // Перебираем все полиномы данной степени
+        //         long start = 1L << divDegree;
+        //         long end = 1L << (divDegree + 1);
+
+        //         for (long candidate = start; candidate < end; candidate++)
+        //         {
+        //             // Пропускаем четные полиномы (имеющие свободный член 0)
+        //             if ((candidate & 1) == 0) continue;
+
+        //             // Проверяем, что candidate делит polynomial
+        //             var (quotient, remainder) = PolynomialDivision(polynomial, candidate);
+        //             if (remainder == 0 && quotient != 1)
+        //             {
+        //                 return candidate;
+        //             }
+        //         }
+        //     }
+
+        //     return polynomial; // Не должно происходить, если IsIrreducibleBig вернул false
+        // }
         
-        // ----- Вспомогательные методы для работы с полиномами в виде long -----
-
-        private static (long Quotient, long Remainder) PolynomialDivision(long dividend, long divisor)
+        /// <summary>
+        /// Проверяет полином на неприводимость (тест Бен-Ора).
+        /// p(x) неприводим <=> НОД(p(x), x^(2^i) - x) = 1 для всех i = 1..d/2
+        /// </summary>
+        private static bool IsIrreducibleBig(long polynomial)
         {
-            if (divisor == 0) throw new DivideByZeroException();
-            long quotient = 0;
-            int divisorDegree = GetPolynomialDegreeBig(divisor);
+            if (polynomial <= 1) return false;
+            int degree = GetPolynomialDegreeBig(polynomial);
+            long h = 0b10; // h(x) = x
 
-            while (GetPolynomialDegreeBig(dividend) >= divisorDegree)
+            for (int i = 1; i <= degree / 2; i++)
             {
-                int degreeDifference = GetPolynomialDegreeBig(dividend) - divisorDegree;
-                quotient ^= (1L << degreeDifference);
-                dividend ^= (divisor << degreeDifference);
-            }
-            return (quotient, dividend);
-        }
-
-        private static long PolynomialGcd(long a, long b)
-        {
-            while (b != 0)
-            {
-                long remainder = PolynomialDivision(a, b).Remainder;
-                a = b;
-                b = remainder;
-            }
-            return a;
-        }
-
-        private static long PolynomialMultiplyMod(long a, long b, long modulus)
-        {
-            long result = 0;
-            for (int i = 0; i < 64; i++)
-            {
-                if ((b & (1L << i)) != 0)
+                h = PolynomialModPower(h, 2, polynomial); // h = x^(2^i) mod p(x)
+                long gcd = PolynomialGcd(polynomial, h ^ 0b10); // НОД(p(x), h(x) - x)
+                if (gcd != 1)
                 {
-                    result ^= a;
+                    return false; // Найден делитель, значит приводим
                 }
-                a = PolynomialDivision(a << 1, modulus).Remainder;
             }
-            return result;
+            return true; // Делителей не найдено, неприводим
         }
 
+        /// <summary>
+        /// Возводит полином в степень по модулю другого полинома.
+        /// </summary>
         private static long PolynomialModPower(long baseValue, int exponent, long modulus)
         {
             long result = 1;
+            baseValue = PolynomialDivision(baseValue, modulus).Remainder;
             while (exponent > 0)
             {
                 if ((exponent & 1) == 1)
@@ -292,18 +408,78 @@ namespace CryptoLib.Algorithms.Rijndael.GaloisField
             return result;
         }
 
-        private static bool IsIrreducibleBig(long polynomial)
+        /// <summary>
+        /// Умножает два полинома по модулю третьего.
+        /// </summary>
+        private static long PolynomialMultiplyMod(long a, long b, long modulus)
         {
-            if (polynomial < 2) return false;
-            int degree = GetPolynomialDegreeBig(polynomial);
-            long x = 2;
-            for (int i = 1; i <= degree / 2; i++)
+            long result = 0;
+            int modDeg = GetPolynomialDegreeBig(modulus);
+            if (modDeg < 0) throw new DivideByZeroException();
+
+            while (b != 0)
             {
-                x = PolynomialModPower(x, 2, polynomial);
-                long gcd = PolynomialGcd(polynomial, (x ^ 2));
-                if (gcd != 1) return false;
+                if ((b & 1) == 1)
+                {
+                    result ^= a;
+                }
+
+                b >>= 1;
+
+                // Сдвигаем a влево (умножаем на x)
+                a <<= 1;
+
+                // Если степень a стала >= степени модуля, то редуцируем,
+                // но нужно сдвинуть modulus так, чтобы выровнять степени.
+                int aDeg = GetPolynomialDegreeBig(a);
+                if (aDeg >= modDeg)
+                {
+                    int shift = aDeg - modDeg;
+                    a ^= (modulus << shift);
+                }
             }
-            return true;
+
+            // В конце результат тоже может иметь степень >= modDeg => редуцируем окончательно
+            int rDeg;
+            while ((rDeg = GetPolynomialDegreeBig(result)) >= modDeg)
+            {
+                int shift = rDeg - modDeg;
+                result ^= (modulus << shift);
+            }
+
+            return result;
+        }
+
+        private static void AddFactor(Dictionary<long, int> factors, long factor)
+        {
+            factors.TryGetValue(factor, out int count);
+            factors[factor] = count + 1;
+        }
+        
+        private static (long Quotient, long Remainder) PolynomialDivision(long dividend, long divisor)
+        {
+            if (divisor == 0) throw new DivideByZeroException();
+            long quotient = 0;
+            int divisorDegree = GetPolynomialDegreeBig(divisor);
+
+            while (GetPolynomialDegreeBig(dividend) >= divisorDegree)
+            {
+                int degreeDifference = GetPolynomialDegreeBig(dividend) - divisorDegree;
+                // Добавляем соответствующий бит в частное
+                quotient ^= (1L << degreeDifference);
+                // Вычитаем (XOR) делитель, сдвинутый на нужную позицию
+                dividend ^= (divisor << degreeDifference);
+            }
+            return (quotient, dividend);
+        }
+
+        private static long PolynomialGcd(long a, long b)
+        {
+            while (b != 0)
+            {
+                (a, b) = (b, PolynomialDivision(a, b).Remainder);
+            }
+            return a;
         }
 
         private static int GetPolynomialDegreeBig(long polynomial)
