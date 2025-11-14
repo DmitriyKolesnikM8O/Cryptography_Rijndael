@@ -1,5 +1,7 @@
 using System.Collections.Generic;
 using System.Numerics;
+using System.Numerics;
+using System.Security.Cryptography; // RandomNumberGeneration
 
 namespace CryptoLib.Algorithms.Rijndael.GaloisField
 {
@@ -72,43 +74,41 @@ namespace CryptoLib.Algorithms.Rijndael.GaloisField
         /// </summary>
         public static bool IsIrreducible(byte polynomialByte)
         {
+            // ... (Проверка на 0 и нечетность остается без вывода)
             if (polynomialByte == 0) return false;
-            // Полный список неприводимых полиномов степеней 1, 2, 3, 4.
-            int[] irreducibleFactors = {
-                0b10,      // x
-                0b11,      // x+1
-                0b101,     // x²+1
-                0b111,     // x²+x+1
-                0b1001,    // x³+1
-                0b1011,    // x³+x+1
-                0b1101,    // x³+x²+1
-                0b10001,   // x⁴+1
-                0b10011,   // x⁴+x+1
-                0b10101,   // x⁴+x²+1
-                0b10111,   // x⁴+x²+x+1
-                0b11001,   // x⁴+x³+1
-                0b11011,   // x⁴+x³+x+1
-                0b11101,   // x⁴+x³+x²+1
-                0b11111    // x⁴+x³+x²+x+1
-            };
+            
+            // 1. Установка x^8 (9-й бит)
+            int p = 0x100 | polynomialByte; 
 
-            int p = 0x100 | polynomialByte;
+            // 2. Проверка на делимость на x 
+            if ((p & 1) == 0) return false;
+            
+            // ... (Список irreducibleFactors остается прежним)
+            int[] irreducibleFactors = {
+                0b11,       // x+1 (степень 1)
+                0b111,      // x²+x+1 (степень 2)
+                0b1011,     // x³+x+1 (степень 3)
+                0b1101,     // x³+x²+1 (степень 3)
+                0b10011,    // x⁴+x+1 (степень 4)
+                0b11001,    // x⁴+x³+1 (степень 4)
+                0b11111     // x⁴+x³+x²+x+1 (степень 4)
+            };
 
             foreach (var factor in irreducibleFactors)
             {
-                if (factor == 0b10) // x
-                {
-                    if ((polynomialByte & 1) == 0) // младший коэффициент = 0 → делится на x
-                        return false;
-                    continue; // иначе — не делится
-                }
-                if (GetRemainder(p, factor) == 0)
+                // 3. Вычисление остатка
+                int remainder = GetRemainder(p, factor);
+                Console.WriteLine($"PolynomialByte: {polynomialByte} Remainder: {remainder} , Factor: {factor}");
+                
+                if (remainder == 0)
                 {
                     return false; // Найден делитель, полином приводим
                 }
             }
+
             return true;
         }
+
 
         /// <summary>
         /// Находит все неприводимые двоичные полиномы 8-й степени.
@@ -123,44 +123,32 @@ namespace CryptoLib.Algorithms.Rijndael.GaloisField
             return polynomials;
         }
 
+
         /// <summary>
         /// Выполняет деление полиномов в GF(2) и возвращает остаток.
         /// </summary>
         private static int GetRemainder(int dividend, int divisor)
         {
-            if (divisor == 0) return dividend;
+            if (divisor == 0) throw new DivideByZeroException();
 
-            // Обрезаем до 9 бит (x^8 + ... + 1)
-            dividend &= 0x1FF;
-
-            int divisorDeg = BitOperations.Log2((uint)divisor);
-
-            while (true)
+            // Используем тот же надежный алгоритм, что и для long
+            int divisorDegree = GetPolynomialDegree(divisor);
+            while (GetPolynomialDegree(dividend) >= divisorDegree)
             {
-                // Обрезаем ПЕРЕД Log2
-                int masked = dividend & 0x1FF;
-                if (masked == 0) break;
-
-                int dividendDeg = BitOperations.Log2((uint)masked);
-                if (dividendDeg < divisorDeg) break;
-
-                int shift = dividendDeg - divisorDeg;
-                dividend ^= (divisor << shift);
-
-                // Обрезаем ПОСЛЕ XOR
-                dividend &= 0x1FF;
+                int degreeDifference = GetPolynomialDegree(dividend) - divisorDegree;
+                dividend ^= (divisor << degreeDifference);
             }
-
-            return dividend & 0xFF; // остаток — младшие 8 бит
+            return dividend;
         }
+
 
         /// <summary>
         /// Определяет степень полинома (позицию старшего установленного бита).
         /// </summary>
         private static int GetPolynomialDegree(int polynomial)
         {
-            if (polynomial == 0) return -1;
-            for (int i = 15; i >= 0; i--)
+            // Используем надежный перебор вместо BitOperations.Log2, чтобы исключить любые ошибки
+            for (int i = 31; i >= 0; i--)
             {
                 if (((polynomial >> i) & 1) == 1) return i;
             }
@@ -173,32 +161,30 @@ namespace CryptoLib.Algorithms.Rijndael.GaloisField
         /// Выполняет разложение двоичного полинома произвольной степени на неприводимые множители.
         /// Реализует алгоритм Кантора-Цассенхауза.
         /// </summary>
-        public static Dictionary<long, int> FactorizePolynomial(long polynomial)
+        public static Dictionary<BigInteger, int> FactorizePolynomial(BigInteger polynomial)
         {
-            var factors = new Dictionary<long, int>();
+            var factors = new Dictionary<BigInteger, int>();
             if (polynomial <= 1) return factors;
-
-            // Шаг 1: Выделяем множитель 'x' (полином 0b10)
-            while ((polynomial & 1) == 0)
+            
+            while ((polynomial & 1) == 0) // IsEven проверяет, что младший бит равен 0
             {
-                AddFactor(factors, 0b10);
+                AddFactor(factors, 2); // 2 - это полином 'x' (0b10)
                 polynomial >>= 1;
             }
-            
-            // Запускаем рекурсивную факторизацию
+
             FactorizeRecursive(polynomial, factors);
             return factors;
         }
 
-        private static void FactorizeRecursive(long polynomial, Dictionary<long, int> factors)
+        private static void FactorizeRecursive(BigInteger polynomial, Dictionary<BigInteger, int> factors)
         {
-            // Используем стек для имитации рекурсии, чтобы избежать двойного подсчета
-            var polynomialsToFactor = new Stack<long>();
+            // Используем стек для имитации рекурсии
+            var polynomialsToFactor = new Stack<BigInteger>();
             polynomialsToFactor.Push(polynomial);
 
             while (polynomialsToFactor.Count > 0)
             {
-                long currentPoly = polynomialsToFactor.Pop();
+                BigInteger currentPoly = polynomialsToFactor.Pop();
                 if (currentPoly == 1) continue;
                 
                 if (IsIrreducibleBig(currentPoly))
@@ -207,25 +193,19 @@ namespace CryptoLib.Algorithms.Rijndael.GaloisField
                 }
                 else
                 {
-                    
-                    long divisor = FindDivisor(currentPoly);
-                    // Дополнительная проверка на ошибку/крайне редкий случай
-                    if (divisor == 1 || divisor == currentPoly) 
+                    BigInteger divisor = FindDivisor(currentPoly);
+                    if (divisor == 1 || divisor == currentPoly)
                     {
-                        // Если IsIrreducibleBig вернул FALSE, но FindDivisor не нашел делитель,
-                        // это может быть либо ошибка в IsIrreducibleBig, либо сбой FindDivisor.
-                        // Временно добавляем его как множитель для продолжения, но нужно логгировать.
-                        AddFactor(factors, currentPoly); 
-                        // Console.WriteLine($"!!! ВНИМАНИЕ: FindDivisor не смог разложить приводимый полином {Convert.ToString(currentPoly, 2)}");
+                        // Если FindDivisor не справился, но IsIrreducibleBig сказал, что полином приводим,
+                        // это указывает на сложность полинома (например, произведение равностепенных факторов).
+                        // Добавляем как есть, чтобы не потерять.
+                        AddFactor(factors, currentPoly);
                     }
                     else 
                     {
-                        // Нормальный путь: делим и рекурсивно обрабатываем
                         polynomialsToFactor.Push(divisor);
                         polynomialsToFactor.Push(PolynomialDivision(currentPoly, divisor).Quotient);
                     }
-                    // polynomialsToFactor.Push(divisor);
-                    // polynomialsToFactor.Push(PolynomialDivision(currentPoly, divisor).Quotient);
                 }
             }
         }
@@ -276,13 +256,13 @@ namespace CryptoLib.Algorithms.Rijndael.GaloisField
         /// Находит один нетривиальный делитель полинома p(x).
         /// Исключает неэффективный FindDivisorFallback.
         /// </summary>
-        private static long FindDivisor(long polynomial)
+        private static BigInteger FindDivisor(BigInteger polynomial)
         {
             // Приводимые полиномы должны иметь степень > 1.
             int n = GetPolynomialDegreeBig(polynomial);
             if (n <= 1) return polynomial; // Возвращаем сам полином или ошибку
 
-            Random rand = new Random();
+            var rng = RandomNumberGenerator.Create();
             
             // Число попыток должно быть достаточно большим для высокой вероятности успеха.
             // 100-200 итераций достаточно для полиномов, которые не являются произведениями
@@ -291,13 +271,12 @@ namespace CryptoLib.Algorithms.Rijndael.GaloisField
 
             for (int attempt = 0; attempt < MaxAttempts; attempt++)
             {
-                // 1. Генерируем случайный полином a(x) со степенью < n.
-                long a = 0;
-                for (int i = 0; i < n; i++)
-                {
-                    if (rand.Next(2) == 1)
-                        a |= (1L << i);
-                }
+                // Генерируем случайный полином a(x) степени < n
+                byte[] bytes = new byte[n / 8 + 1];
+                rng.GetBytes(bytes);
+                BigInteger a = new BigInteger(bytes, isUnsigned: true);
+                // Ограничиваем степень
+                a %= BigInteger.One << n;
                 
                 // 2. Если a = 0 или a = 1, пропускаем (они тривиальны).
                 if (a <= 1) continue;
@@ -314,10 +293,10 @@ namespace CryptoLib.Algorithms.Rijndael.GaloisField
                 {
                     // Вычисляем a(x)^(2^k) mod p(x)
                     // Использование PolynomialModPower здесь более эффективно.
-                    long a_power = PolynomialModPower(a, (1 << k), polynomial);
+                    BigInteger a_power = PolynomialModPower(a, BigInteger.Pow(2, k), polynomial);
                     
                     // НОД(p(x), a(x)^(2^k) + a(x)) = НОД(p(x), a_power ^ a)
-                    long g = PolynomialGcd(polynomial, a_power ^ a); 
+                    BigInteger g = PolynomialGcd(polynomial, a_power ^ a); 
                     
                     if (g != 1 && g != polynomial)
                     {
@@ -372,41 +351,41 @@ namespace CryptoLib.Algorithms.Rijndael.GaloisField
         /// Проверяет полином на неприводимость (тест Бен-Ора).
         /// p(x) неприводим <=> НОД(p(x), x^(2^i) - x) = 1 для всех i = 1..d/2
         /// </summary>
-        private static bool IsIrreducibleBig(long polynomial)
-        {
-            if (polynomial <= 1) return false;
-            int degree = GetPolynomialDegreeBig(polynomial);
-            long h = 0b10; // h(x) = x
+        // private static bool IsIrreducibleBig(long polynomial)
+        // {
+        //     if (polynomial <= 1) return false;
+        //     int degree = GetPolynomialDegreeBig(polynomial);
+        //     long h = 0b10; // h(x) = x
 
-            for (int i = 1; i <= degree / 2; i++)
-            {
-                h = PolynomialModPower(h, 2, polynomial); // h = x^(2^i) mod p(x)
-                long gcd = PolynomialGcd(polynomial, h ^ 0b10); // НОД(p(x), h(x) - x)
-                if (gcd != 1)
-                {
-                    return false; // Найден делитель, значит приводим
-                }
-            }
-            return true; // Делителей не найдено, неприводим
-        }
+        //     for (int i = 1; i <= degree / 2; i++)
+        //     {
+        //         h = PolynomialModPower(h, 2, polynomial); // h = x^(2^i) mod p(x)
+        //         long gcd = PolynomialGcd(polynomial, h ^ 0b10); // НОД(p(x), h(x) - x)
+        //         if (gcd != 1)
+        //         {
+        //             return false; // Найден делитель, значит приводим
+        //         }
+        //     }
+        //     return true; // Делителей не найдено, неприводим
+        // }
 
         /// <summary>
         /// Возводит полином в степень по модулю другого полинома.
         /// </summary>
-        private static long PolynomialModPower(long baseValue, int exponent, long modulus)
-        {
-            long result = 1;
-            baseValue = PolynomialDivision(baseValue, modulus).Remainder;
-            while (exponent > 0)
-            {
-                if ((exponent & 1) == 1)
-                    result = PolynomialMultiplyMod(result, baseValue, modulus);
+        // private static long PolynomialModPower(long baseValue, int exponent, long modulus)
+        // {
+        //     long result = 1;
+        //     baseValue = PolynomialDivision(baseValue, modulus).Remainder;
+        //     while (exponent > 0)
+        //     {
+        //         if ((exponent & 1) == 1)
+        //             result = PolynomialMultiplyMod(result, baseValue, modulus);
                 
-                baseValue = PolynomialMultiplyMod(baseValue, baseValue, modulus);
-                exponent >>= 1;
-            }
-            return result;
-        }
+        //         baseValue = PolynomialMultiplyMod(baseValue, baseValue, modulus);
+        //         exponent >>= 1;
+        //     }
+        //     return result;
+        // }
 
         /// <summary>
         /// Умножает два полинома по модулю третьего.
@@ -450,45 +429,96 @@ namespace CryptoLib.Algorithms.Rijndael.GaloisField
             return result;
         }
 
-        private static void AddFactor(Dictionary<long, int> factors, long factor)
+        private static void AddFactor(Dictionary<BigInteger, int> factors, BigInteger factor)
         {
             factors.TryGetValue(factor, out int count);
             factors[factor] = count + 1;
         }
         
-        private static (long Quotient, long Remainder) PolynomialDivision(long dividend, long divisor)
+        private static (BigInteger Quotient, BigInteger Remainder) PolynomialDivision(BigInteger dividend, BigInteger divisor)
         {
-            if (divisor == 0) throw new DivideByZeroException();
-            long quotient = 0;
+            if (divisor.IsZero) throw new DivideByZeroException();
+            BigInteger quotient = 0;
             int divisorDegree = GetPolynomialDegreeBig(divisor);
 
             while (GetPolynomialDegreeBig(dividend) >= divisorDegree)
             {
                 int degreeDifference = GetPolynomialDegreeBig(dividend) - divisorDegree;
-                // Добавляем соответствующий бит в частное
-                quotient ^= (1L << degreeDifference);
-                // Вычитаем (XOR) делитель, сдвинутый на нужную позицию
+                quotient ^= (BigInteger.One << degreeDifference);
                 dividend ^= (divisor << degreeDifference);
             }
             return (quotient, dividend);
         }
 
-        private static long PolynomialGcd(long a, long b)
+        private static BigInteger PolynomialGcd(BigInteger a, BigInteger b)
         {
-            while (b != 0)
+            while (!b.IsZero)
             {
                 (a, b) = (b, PolynomialDivision(a, b).Remainder);
             }
             return a;
         }
 
-        private static int GetPolynomialDegreeBig(long polynomial)
+        private static BigInteger PolynomialModPower(BigInteger baseValue, BigInteger exponent, BigInteger modulus)
         {
-            for (int i = 63; i >= 0; i--)
+            BigInteger result = 1;
+            baseValue = PolynomialDivision(baseValue, modulus).Remainder;
+            while (exponent > 0)
             {
-                if (((polynomial >> i) & 1) == 1) return i;
+                if (!exponent.IsEven) // exponent & 1 != 0
+                    result = PolynomialMultiplyMod(result, baseValue, modulus);
+                
+                baseValue = PolynomialMultiplyMod(baseValue, baseValue, modulus);
+                exponent >>= 1;
             }
-            return -1;
+            return result;
+        }
+
+        private static BigInteger PolynomialMultiplyMod(BigInteger a, BigInteger b, BigInteger modulus)
+        {
+            BigInteger result = 0;
+            int modDeg = GetPolynomialDegreeBig(modulus);
+            if (modDeg < 0) throw new DivideByZeroException();
+
+            while (b > 0)
+            {
+                if (!b.IsEven) // b & 1 != 0
+                {
+                    result ^= a;
+                }
+                b >>= 1;
+                a <<= 1;
+                if (GetPolynomialDegreeBig(a) >= modDeg)
+                {
+                    a ^= modulus;
+                }
+            }
+            return result;
+        }
+
+        private static bool IsIrreducibleBig(BigInteger polynomial)
+        {
+            if (polynomial <= 1) return false;
+            int degree = GetPolynomialDegreeBig(polynomial);
+            BigInteger h = 2; // h(x) = x
+
+            for (int i = 1; i <= degree / 2; i++)
+            {
+                h = PolynomialModPower(h, 2, polynomial);
+                BigInteger gcd = PolynomialGcd(polynomial, h ^ 2);
+                if (gcd != 1)
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private static int GetPolynomialDegreeBig(BigInteger polynomial)
+        {
+            if (polynomial.IsZero) return -1;
+            // GetBitLength() возвращает позицию старшего бита + 1
+            return (int)polynomial.GetBitLength() - 1;
         }
 
         #endregion

@@ -61,8 +61,8 @@ namespace CryptoLib.Algorithms.Rijndael
         {
             if (_roundKeys == null)
                 throw new InvalidOperationException("Round keys are not set. Call SetRoundKeys() first.");
-            if (block.Length != BlockSize)
-                throw new ArgumentException($"Block size must be {BlockSize} bytes.");
+            if (block == null || block.Length != BlockSize)
+                throw new ArgumentException($"Block must not be null and size must be {BlockSize} bytes.");
 
             // 1. Преобразуем входной блок в матрицу состояния (state)
             var state = ToStateMatrix(block);
@@ -97,8 +97,8 @@ namespace CryptoLib.Algorithms.Rijndael
         {
             if (_roundKeys == null)
                 throw new InvalidOperationException("Round keys are not set. Call SetRoundKeys() first.");
-            if (block.Length != BlockSize)
-                throw new ArgumentException($"Block size must be {BlockSize} bytes.");
+            if (block == null || block.Length != BlockSize)
+                throw new ArgumentException($"Block must not be null and size must be {BlockSize} bytes.");
 
             // 1. Преобразуем входной блок в матрицу состояния (state)
             var state = ToStateMatrix(block);
@@ -137,9 +137,18 @@ namespace CryptoLib.Algorithms.Rijndael
             int nb = blockSizeBytes / 4;
 
             // Количество раундов определяется максимумом из Nk и Nb
-            if (nk <= 4 && nb <= 4) return 10;
-            if (nk <= 6 && nb <= 6) return 12;
-            return 14;
+            if (nk <= 6 && nb <= 6)
+            {
+                if (nk > 4 || nb > 4) return 12;
+                return 10;
+            }
+            if (nk <= 8 && nb <= 8)
+            {
+                return 14;
+            }
+
+            throw new InvalidOperationException("Unsupported key/block size combination for determining number of rounds.");
+            
         }
 
         #region Private Helper Methods for Encryption
