@@ -1,15 +1,9 @@
-// CryptoDemo/Demos/Task3_FileEncryptionDemo.cs
-
 using CryptoLib.Algorithms.Rijndael;
 using CryptoLib.Algorithms.Rijndael.Enums;
 using CryptoLib.Interfaces;
 using CryptoLib.Modes;
-using System;
-using System.IO;
 using System.Security.Cryptography;
 using System.Text;
-using System.Threading.Tasks;
-using System.Linq;
 
 namespace CryptoDemo.Demos
 {
@@ -23,7 +17,7 @@ namespace CryptoDemo.Demos
             string reportPath = "DemonstrationReport.txt";
             var report = new StringBuilder();
 
-            // Создаем делегат, который будет одновременно писать и в консоль, и в отчет
+            
             Action<string> log = (message) =>
             {
                 Console.WriteLine(message);
@@ -63,11 +57,11 @@ namespace CryptoDemo.Demos
                 }
             }
 
-            // работа с другим неприводимым полиномом
+            
             log($"\n{new string('=', 70)}");
             log("\n--- Демонстрация с кастомным неприводимым полиномом ---");
             
-            // 0x8D - это x^8 + x^7 + x^3 + x^2 + 1, другой стандартный неприводимый полином
+            // 0x8D - это x^8 + x^7 + x^3 + x^2 + 1
             byte customPolynomial = 0x8D; 
             log($"[INFO] Выбран альтернативный неприводимый полином: 0x{customPolynomial:X2}");
 
@@ -79,7 +73,7 @@ namespace CryptoDemo.Demos
             var customKey = new byte[16];
             RandomNumberGenerator.Fill(customKey);
 
-            // Шифруем и дешифруем ОДИН блок, чтобы показать, что математика работает
+            
             var originalBlock = Encoding.UTF8.GetBytes("This is 16 bytes");
             
             rijndaelCustomEncrypt.SetRoundKeys(customKey);
@@ -107,9 +101,9 @@ namespace CryptoDemo.Demos
             log($"\n{new string('=', 70)}");
             log("\n--- ИТОГИ ТЕСТИРОВАНИЯ ---");
             
-            // Считаем корректно пропущенные тесты как "пройденные" для итогового отчета
+            
             int streamModes = cipherModes.Count(m => m == CryptoLib.Modes.CipherMode.CTR || m == CryptoLib.Modes.CipherMode.OFB || m == CryptoLib.Modes.CipherMode.CFB);
-            int paddingsToSkip = paddingModes.Length - 1; // Пропускаем все, кроме Zeros
+            int paddingsToSkip = paddingModes.Length - 1;
             int skippedTests = streamModes * paddingsToSkip;
 
             
@@ -147,11 +141,11 @@ namespace CryptoDemo.Demos
                                 mode == CryptoLib.Modes.CipherMode.OFB || 
                                 mode == CryptoLib.Modes.CipherMode.CFB;
 
-            // Потоковые режимы не используют паддинг. Пропускаем бессмысленные комбинации.
+
             if (isStreamMode && padding != CryptoLib.Modes.PaddingMode.Zeros)
             {
                 log("[INFO] Потоковые режимы не используют паддинг. Комбинация пропускается.");
-                return true; // Считаем тест пройденным, так как комбинация некорректна
+                return true;
             }
             
             string tempFilePrefix = $"{mode}_{padding}";
@@ -167,7 +161,7 @@ namespace CryptoDemo.Demos
                 RandomNumberGenerator.Fill(iv);
                 log($"[INFO] IV: {BitConverter.ToString(iv).Replace("-", "")}");
 
-                // Шифрование
+                
                 var context = new CipherContext(algorithm, key, mode, padding, iv);
                 await context.EncryptAsync(plaintextFile, ciphertextFile);
                 log($"[ACTION] Шифрование завершено.");
@@ -175,12 +169,12 @@ namespace CryptoDemo.Demos
                 byte[] ciphertextBytes = await File.ReadAllBytesAsync(ciphertextFile);
                 log($"[INFO] Шифротекст (HEX): {BitConverter.ToString(ciphertextBytes).Replace("-", " ")}");
 
-                // Дешифрование
+                
                 var decryptContext = new CipherContext(algorithm, key, mode, padding, iv);
                 await decryptContext.DecryptAsync(ciphertextFile, decryptedFile);
                 log($"[ACTION] Дешифрование завершено.");
 
-                // Проверка через сравнение сырых байтов
+                
                 byte[] originalBytes = await File.ReadAllBytesAsync(plaintextFile);
                 byte[] decryptedBytes = await File.ReadAllBytesAsync(decryptedFile);
 
@@ -194,14 +188,13 @@ namespace CryptoDemo.Demos
                     }
                     else
                     {
-                        // Сравниваем только ту часть, которая соответствует оригиналу
+                        
                         success = decryptedBytes.Take(originalBytes.Length).SequenceEqual(originalBytes);
                     }
                 }
                 else
                 {
-                    // Для всех остальных надежных паддингов и потоковых режимов,
-                    // массивы байт должны совпадать идеально.
+                    
                     success = originalBytes.SequenceEqual(decryptedBytes);
                 }
 

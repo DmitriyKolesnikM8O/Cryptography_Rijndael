@@ -53,7 +53,7 @@ namespace CryptoLib.Algorithms.Rijndael
             for (int i = 0; i < 256; i++)
             {
                 byte b = (byte)i;
-                // 1. Находим обратный элемент
+                
                 byte inverse = GaloisFieldMath.Inverse(b, _irreduciblePolynomial);
                 
                 // 2. Применяем афинное преобразование

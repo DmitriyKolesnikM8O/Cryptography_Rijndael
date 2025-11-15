@@ -136,7 +136,6 @@ namespace CryptoLib.Algorithms.Rijndael
             int nk = keySizeBytes / 4;
             int nb = blockSizeBytes / 4;
 
-            // Количество раундов определяется максимумом из Nk и Nb
             if (nk <= 6 && nb <= 6)
             {
                 if (nk > 4 || nb > 4) return 12;
@@ -224,12 +223,12 @@ namespace CryptoLib.Algorithms.Rijndael
         private void ShiftRows(byte[,] state)
         {
             int nb = BlockSize / 4;
-            // Сдвиги для разных размеров блока согласно спецификации Rijndael
+            // Сдвиги для разных размеров блока
             int[] shifts = nb switch
             {
-                4 => new[] { 0, 1, 2, 3 }, // 128-bit block (AES)
-                6 => new[] { 0, 1, 2, 3 }, // 192-bit block
-                8 => new[] { 0, 1, 3, 4 }, // 256-bit block
+                4 => [0, 1, 2, 3], // 128-bit block (AES)
+                6 => [0, 1, 2, 3], // 192-bit block
+                8 => [0, 1, 3, 4], // 256-bit block
                 _ => throw new InvalidOperationException("Unsupported block size.")
             };
 
@@ -303,9 +302,9 @@ namespace CryptoLib.Algorithms.Rijndael
             // Сдвиги те же, что и при шифровании, но применяются в обратную сторону.
             int[] shifts = nb switch
             {
-                4 => new[] { 0, 1, 2, 3 }, // 128-bit block (AES)
-                6 => new[] { 0, 1, 2, 3 }, // 192-bit block
-                8 => new[] { 0, 1, 3, 4 }, // 256-bit block
+                4 => [0, 1, 2, 3], // 128-bit block (AES)
+                6 => [0, 1, 2, 3], // 192-bit block
+                8 => [0, 1, 3, 4], // 256-bit block
                 _ => throw new InvalidOperationException("Unsupported block size.")
             };
 
@@ -348,15 +347,6 @@ namespace CryptoLib.Algorithms.Rijndael
         }
 
         #endregion
-
-        /// <summary>
-        /// ВРЕМЕННЫЙ МЕТОД ДЛЯ ОТЛАДКИ. Возвращает сгенерированные раундовые ключи.
-        /// </summary>
-        public byte[][]? GetRoundKeysForDebug()
-        {
-            return _roundKeys;
-        }
-        
         
     }
     

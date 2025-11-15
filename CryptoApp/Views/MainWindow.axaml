@@ -15,9 +15,7 @@
         <!-- ВКЛАДКА 1: ШИФРОВАНИЕ ФАЙЛОВ -->
         <TabItem Header="Шифрование файлов">
             <Grid RowDefinitions="Auto,*,Auto" Margin="15">
-                <!-- #1. ОСНОВНАЯ ПАНЕЛЬ НАСТРОЕК -->
                 <StackPanel Grid.Row="0" Spacing="10">
-                    <!-- ... (весь твой старый код для шифрования файлов без изменений) ... -->
                     <TextBlock Text="1. Выбор файлов" FontWeight="Bold"/>
                     <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" Margin="0,5,0,0">
                         <TextBlock Text="Исходный файл:" VerticalAlignment="Center"/>
@@ -40,7 +38,7 @@
                     </Grid>
                 </StackPanel>
 
-                <!-- #2. ПАНЕЛЬ УПРАВЛЕНИЯ -->
+                
                 <StackPanel Grid.Row="1" Spacing="10" HorizontalAlignment="Center" VerticalAlignment="Center" Orientation="Horizontal">
                     <Button Content="Зашифровать" Command="{Binding EncryptCommand}" IsEnabled="{Binding IsNotBusy}"
                             Background="ForestGreen" Foreground="White" Padding="20,10"/>
@@ -48,7 +46,7 @@
                             Background="Crimson" Foreground="White" Padding="20,10"/>
                 </StackPanel>
                 
-                <!-- #3. ПАНЕЛЬ СТАТУСА -->
+                
                 <StackPanel Grid.Row="2" Spacing="5" VerticalAlignment="Bottom">
                     <ProgressBar Value="{Binding Progress}" Minimum="0" Maximum="100" IsIndeterminate="{Binding IsBusy}"/>
                     <TextBlock Text="{Binding StatusText}" HorizontalAlignment="Center"/>
@@ -60,14 +58,14 @@
         <TabItem Header="Крипто-калькулятор">
         <ScrollViewer> 
             <StackPanel Margin="15" Spacing="10">
-                <!-- Секция факторизации полиномов -->
+                
                 <TextBlock Text="Разложение полиномов на множители" FontSize="16" FontWeight="Bold"/>
                 <TextBlock Text="Введите полином в двоичном виде (например, 10000001 для x^7+1):" TextWrapping="Wrap"/>
                 <TextBox Text="{Binding PolynomialToFactorString}"/>
                 <Button Content="Разложить на множители" Command="{Binding FactorizePolynomialCommand}" HorizontalAlignment="Center"/>
                 
                 <TextBlock Text="Результат:" Margin="0,10,0,0" FontWeight="Bold"/>
-                <!-- Область вывода результата -->
+                
                 <TextBox Text="{Binding FactorizationResult}" 
                          IsReadOnly="True" 
                          TextWrapping="Wrap" 
@@ -75,11 +73,11 @@
                          AcceptsReturn="True"
                          FontFamily="Monospace"/>
                 
-                <!-- VVV НОВАЯ СЕКЦИЯ: КАЛЬКУЛЯТОР GF(2^8) VVV -->
+                
                 <Separator Margin="0,10"/>
                 <TextBlock Text="Калькулятор поля Галуа GF(2^8)" FontSize="16" FontWeight="Bold"/>
                 
-                <!-- Панель для операндов -->
+                
                 <Grid ColumnDefinitions="Auto,*,Auto,*" ColumnSpacing="10" Margin="0,5,0,0">
                     <TextBlock Grid.Column="0" Text="Операнд A (HEX):" VerticalAlignment="Center"/>
                     <TextBox Grid.Column="1" Text="{Binding OperandAString}"/>
@@ -87,7 +85,7 @@
                     <TextBox Grid.Column="3" Text="{Binding OperandBString}"/>
                 </Grid>
 
-                <!-- Панель для полинома -->
+                
                 <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" Margin="0,5,0,0">
                     <TextBlock Grid.Column="0" Text="Неприводимый полином (модуль):" VerticalAlignment="Center"/>
                     <ComboBox Grid.Column="1" ItemsSource="{Binding IrreduciblePolynomials}" SelectedItem="{Binding SelectedPolynomial}"/>

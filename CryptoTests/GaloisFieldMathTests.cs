@@ -1,7 +1,25 @@
-using Xunit;
 using CryptoLib.Algorithms.Rijndael.GaloisField;
-using System.Collections.Generic;
 using System.Reflection;
+
+/*
+1. Add_ShouldReturnCorrectXorResult - Проверяет операцию сложения на нескольких известных векторах.
+2. Multiply_ShouldReturnCorrectProduct - Проверяет операцию умножения на известных векторах из стандарта FIPS-197.
+3. Inverse_ShouldFindCorrectMultiplicativeInverse - Проверяет операцию нахождения обратного элемента на известных векторах.
+4. Inverse_OfZero_ShouldBeZero - Проверяет граничный случай: обратный элемент для нуля должен быть нулем.
+5. Inverse_Property_A_Times_InverseA_ShouldBe_1 - Проверяет фундаментальное свойство поля: a * a⁻¹ = 1 для всех ненулевых элементов.
+6. FindAllIrreduciblePolynomials_ShouldReturnExactly30Polynomials - Проверяет, что функция поиска неприводимых полиномов возвращает ровно 30 штук, как указано в спецификации.
+7. IsIrreducible_ShouldCorrectlyIdentifyPolynomials - Проверяет функцию определения неприводимости на наборе известных приводимых и неприводимых полиномов.
+8. Multiply_KnownValue_From_FIPS197 - Дополнительный тест, дублирующий один из векторов Multiply_ShouldReturnCorrectProduct для надежности.
+9. Add_ShouldBeCommutative - Проверяет свойство коммутативности сложения (a+b = b+a).
+10. Multiply_ShouldBeCommutative - Проверяет свойство коммутативности умножения (a*b = b*a).
+11. Multiply_ShouldBeAssociative - Проверяет свойство ассоциативности умножения ((a*b)*c = a*(b*c)).
+12. Multiply_ShouldBeDistributiveOverAdd - Проверяет свойство дистрибутивности (a*(b+c) = a*b + a*c).
+13. Multiply_WithCustomModule_ShouldReturnCorrectProduct - Проверяет, что умножение корректно работает с нестандартным неприводимым полиномом.
+14. Inverse_Property_WithCustomModule_ShouldHold - Проверяет, что свойство a * a⁻¹ = 1 сохраняется при использовании нестандартного неприводимого полинома.
+15. FindAllIrreduciblePolynomials_ShouldReturnCorrectPolynomials - Проверяет, что список найденных неприводимых полиномов в точности совпадает с эталонным.
+16. GetRemainder_For_0x1C3_div_0x07_ShouldBeZero - Отладочный тест, проверяющий корректность работы private-метода деления на конкретном проблемном значении.
+17. IsIrreducible_ForBoundaryCases_ShouldReturnFalse - Проверяет функцию определения неприводимости на граничных случаях (ноль, четные полиномы).
+*/
 
 namespace CryptoTests
 {
@@ -9,8 +27,6 @@ namespace CryptoTests
     {
         // Стандартный неприводимый полином для AES
         private const byte AesIrreduciblePolynomial = 0x1B;
-
-
 
         [Theory]
         [InlineData(0x53, 0xCA, 0x99)] // Пример из Википедии
@@ -175,27 +191,18 @@ namespace CryptoTests
         [InlineData((byte)0xC6, (byte)0xAE, (byte)0x57, (byte)0x8D)] // Случайные значения, посчитанные на калькуляторе для этого поля
         public void Multiply_WithCustomModule_ShouldReturnCorrectProduct(byte a, byte b, byte expected, byte module)
         {
-            // Этот тест доказывает, что функция Multiply корректно использует переданный модуль,
-            // а не захардкоженный 0x1B.
 
-            // Act
             var result = GaloisFieldMath.Multiply(a, b, module);
 
-            // Assert
             Assert.Equal(expected, result);
         }
 
         [Fact]
         public void Inverse_Property_WithCustomModule_ShouldHold()
         {
-            // Этот тест доказывает, что Inverse работает для любого валидного поля,
-            // а не только для стандартного поля AES.
-
-            // Arrange
             // x^8 + x^7 + x^3 + x^2 + 1 - другой известный неприводимый полином
             byte customIrreduciblePolynomial = 0x8D;
 
-            // Act & Assert
             // Проверяем свойство a * a⁻¹ = 1 для всех ненулевых элементов в этом новом поле.
             for (int i = 1; i < 256; i++)
             {
@@ -206,48 +213,44 @@ namespace CryptoTests
                 Assert.Equal(1, product);
             }
         }
-        
+
         [Fact]
         public void FindAllIrreduciblePolynomials_ShouldReturnCorrectPolynomials()
         {
-            // Arrange
             var expectedPolynomials = new HashSet<byte>
             {
                 0x1B, 0x1D, 0x2B, 0x2D, 0x39, 0x3F, 0x4D, 0x5F, 0x63, 0x7B,
-    0x65, 0x69, 0x71, 0x77, 0x87, 0x8B, 0x8D, 0x9F, 0xA3, 0xA9,
-    0xBD, 0xE7, 0xB1, 0xF3, 0xF5, 0xC3, 0xF9, 0xCF, 0xD7, 0xDD
+                0x65, 0x69, 0x71, 0x77, 0x87, 0x8B, 0x8D, 0x9F, 0xA3, 0xA9,
+                0xBD, 0xE7, 0xB1, 0xF3, 0xF5, 0xC3, 0xF9, 0xCF, 0xD7, 0xDD
             };
-            
-            // Act
+
             var actualPolynomials = GaloisFieldMath.FindAllIrreduciblePolynomials();
             var actualSet = new HashSet<byte>(actualPolynomials);
 
-            // Assert: Основная проверка
             if (!expectedPolynomials.SetEquals(actualSet))
             {
-                // --- Логика для отладочного вывода разницы ---
-                
+
+
                 // 1. Полиномы, которые мы нашли, но не ожидали (лишние)
                 var unexpected = new HashSet<byte>(actualSet);
                 unexpected.ExceptWith(expectedPolynomials); // Удаляем все ожидаемые
 
                 // 2. Полиномы, которые мы ожидали, но не нашли (отсутствующие)
                 var missing = new HashSet<byte>(expectedPolynomials);
-                missing.ExceptWith(actualSet); // Удаляем все найденные
+                missing.ExceptWith(actualSet);
 
                 string errorMessage = $"\n--- Ошибка в неприводимых полиномах 8-й степени ({actualSet.Count} из 30) ---\n" +
                                     $"Ожидалось: 30. Найдено: {actualSet.Count}.\n" +
                                     $"Лишние (Reducible, но найдены): {string.Join(", ", FormatBytes(unexpected))}\n" +
                                     $"Отсутствующие (Irreducible, но пропущены): {string.Join(", ", FormatBytes(missing))}\n";
-                                    
-                Assert.Fail(errorMessage); // Вызываем ошибку с подробным сообщением
+
+                Assert.Fail(errorMessage);
             }
-            
-            // Дополнительная проверка количества
+
             Assert.Equal(30, actualPolynomials.Count);
         }
 
-        
+
 
         [Fact]
         public void GetRemainder_For_0x1C3_div_0x07_ShouldBeZero()
@@ -256,8 +259,6 @@ namespace CryptoTests
             // Мы знаем, что полином 0xC3 (x^8+x^7+x^6+1) должен делиться
             // на 0x07 (x^2+x+1). Это значит, что GetRemainder должен вернуть 0.
 
-            // Arrange
-            // Используем рефлексию, чтобы вызвать private-метод GetRemainder.
             var method = typeof(GaloisFieldMath).GetMethod("GetRemainder", BindingFlags.NonPublic | BindingFlags.Static, new[] { typeof(int), typeof(int) });
             if (method == null)
                 throw new InvalidOperationException("Не удалось найти приватный метод GetRemainder.");
@@ -266,16 +267,13 @@ namespace CryptoTests
             int divisor = 0x07;  // Полином x^2 + x + 1
             int expectedRemainder = 0x03;
 
-            // Act
-            var actualRemainder = (int)method.Invoke(null, new object[] { dividend, divisor });
+            var actualRemainder = (int)method.Invoke(null, [dividend, divisor]);
 
-            // Assert
             Assert.Equal(expectedRemainder, actualRemainder);
         }
 
         private static IEnumerable<string> FormatBytes(IEnumerable<byte> bytes)
         {
-            // Сортируем для удобства чтения
             return bytes.OrderBy(b => b).Select(b => $"0x{b:X2}");
         }
 
@@ -285,12 +283,8 @@ namespace CryptoTests
         [InlineData((byte)0xFE, false)] // Еще один четный полином
         public void IsIrreducible_ForBoundaryCases_ShouldReturnFalse(byte polynomial, bool expected)
         {
-            // Этот тест проверяет обработку граничных и очевидно приводимых случаев.
 
-            // Act
             var result = GaloisFieldMath.IsIrreducible(polynomial);
-
-            // Assert
             Assert.Equal(expected, result);
         }
     }

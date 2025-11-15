@@ -1,13 +1,16 @@
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
-using System.Threading.Tasks;
-using Xunit;
 using Xunit.Abstractions;
-using CryptoLib.Algorithms.Rijndael; // Для RijndaelCipher
-using CryptoLib.Algorithms.Rijndael.Enums; // Для KeySize и BlockSize
-using CryptoLib.Modes; // Для CipherContext и режимов
+using CryptoLib.Algorithms.Rijndael;
+using CryptoLib.Algorithms.Rijndael.Enums; 
+using CryptoLib.Modes;
+
+/*
+1. TestDataGenerator: Это не тест, а вспомогательный метод-генератор. Он создает набор тестовых случаев, комбинируя разные типы файлов (текст, изображение, аудио и т.д.), разные размеры ключа (128, 192, 256) и все доступные режимы шифрования.
+2. ComprehensiveFileEncryptDecrypt_ShouldSucceed: Главный "стресс-тест". Он берет каждый набор данных от TestDataGenerator и выполняет полный цикл шифрования-дешифрования реального файла. Тест проверяет, что исходный и расшифрованный файлы полностью совпадают, а также измеряет и выводит время, затраченное на каждую операцию (шифрование, дешифрование, проверка).
+3. EncryptDecrypt_WithBlockAlignedData_ShouldSucceed: Проверяет граничные случаи обработки паддинга (PKCS7). Он тестирует шифрование данных, длина которых уже кратна размеру блока (включая пустые данные), чтобы убедиться, что паддинг корректно добавляется (целый новый блок) и затем корректно удаляется.
+4. Decrypt_WithTamperedCiphertext_ShouldThrowException: Тест на безопасность. Он шифрует данные, затем намеренно "портит" один байт в шифротексте. После этого он пытается расшифровать измененные данные. Для режимов вроде CBC это приведет к некорректному паддингу, и CipherContext должен выбросить исключение (CryptographicException при удалении паддинга), что и проверяет тест. Это доказывает, что система может обнаружить повреждение данных.
+*/
+
 
 namespace CryptoTests
 {
@@ -58,7 +61,6 @@ namespace CryptoTests
         [MemberData(nameof(TestDataGenerator))]
         public async Task ComprehensiveFileEncryptDecrypt_ShouldSucceed(string inputFilePath, CipherMode mode, int keySizeInBits)
         {
-            // --- 1. Подготовка ключа и KeySize enum ---
             byte[] key;
             KeySize keySizeEnum;
             switch (keySizeInBits)
@@ -87,10 +89,9 @@ namespace CryptoTests
 
             byte[]? iv = mode == CipherMode.ECB ? null : _testIV;
 
-            // --- 2. Создание экземпляра алгоритма Rijndael ---
             var rijndaelAlgorithm = new RijndaelCipher(keySizeEnum, BlockSize.B128);
 
-            // --- 3. Создание CipherContext с вашим алгоритмом ---
+
             var context = new CipherContext(rijndaelAlgorithm, key, mode, PaddingMode.PKCS7, iv);
 
             string encryptedFile = Path.GetTempFileName();
@@ -135,14 +136,11 @@ namespace CryptoTests
         {
             var key = _testKey128;
             var originalData = new byte[dataSize];
-            System.Security.Cryptography.RandomNumberGenerator.Fill(originalData); // Заполняем случайными данными
+            System.Security.Cryptography.RandomNumberGenerator.Fill(originalData);
 
             var rijndael = new RijndaelCipher(KeySize.K128, BlockSize.B128);
             var context = new CipherContext(rijndael, key, CipherMode.CBC, PaddingMode.PKCS7, _testIV);
 
-            // --- ИСПРАВЛЕНИЕ ЗДЕСЬ ---
-            // 1. Вычисляем размер выходного буфера для шифрования.
-            // Для PKCS7, если данные выровнены по блоку, добавляется целый блок паддинга.
             int encryptedSize = dataSize + (16 - (dataSize % 16));
             if (dataSize % 16 == 0)
             {
@@ -150,14 +148,11 @@ namespace CryptoTests
             }
 
             var encryptedData = new byte[encryptedSize];
-            var decryptedData = new byte[encryptedSize]; // Буфер для расшифровки может быть того же размера
+            var decryptedData = new byte[encryptedSize];
 
-            // 2. Вызываем перегрузку метода с двумя аргументами
             await context.EncryptAsync(originalData, encryptedData);
             await context.DecryptAsync(encryptedData, decryptedData);
 
-            // 3. Сравниваем только значащую часть данных
-            // После дешифровки буфер может содержать лишние нули в конце.
             var finalDecrypted = new byte[dataSize];
             Array.Copy(decryptedData, finalDecrypted, dataSize);
 
@@ -173,69 +168,18 @@ namespace CryptoTests
             var rijndael = new RijndaelCipher(KeySize.K128, BlockSize.B128);
             var context = new CipherContext(rijndael, key, CipherMode.CBC, PaddingMode.PKCS7, _testIV);
 
-            // --- ИСПРАВЛЕНИЕ ЗДЕСЬ ---
-            // 1. Создаем буферы для входных и выходных данных
             var encryptedData = new byte[originalData.Length + 16]; // 32 + 16 = 48 байт
             var decryptedGarbage = new byte[encryptedData.Length];
 
             await context.EncryptAsync(originalData, encryptedData);
 
-            // Повредим один байт в середине шифротекста
             encryptedData[encryptedData.Length - 1] ^= 0xFF;
 
-            // 2. Проверяем, что вызов DecryptAsync с двумя аргументами вызовет исключение
-            // из-за неправильной проверки паддинга в конце.
             await Assert.ThrowsAsync<System.Security.Cryptography.CryptographicException>(async () =>
             {
                 await context.DecryptAsync(encryptedData, decryptedGarbage);
             });
         }
-        
-        // [Fact]
-        // public void Decrypt_WithTamperedPadding_ShouldProduceCorruptedResult()
-        // {
-        //     // --- ARRANGE ---
-        //     var key = _testKey128;
-        //     // Берем данные, которые НЕ кратны размеру блока, чтобы паддинг точно был
-        //     var originalData = System.Text.Encoding.UTF8.GetBytes("This is some test data for encryption."); // 36 байт
 
-        //     var rijndael = new RijndaelCipher(KeySize.K128, BlockSize.B128);
-        //     var context = new CipherContext(rijndael, key, CipherMode.CBC, PaddingMode.PKCS7, _testIV);
-
-        //     // Вычисляем размеры буферов
-        //     // 36 байт данных -> 48 байт после паддинга до 3-х блоков
-        //     int encryptedSize = 48; 
-        //     var encryptedData = new byte[encryptedSize];
-        //     var decryptedData = new byte[encryptedSize];
-
-        //     // --- ACT 1: Шифруем и повреждаем ---
-            
-        //     // Запускаем синхронно для простоты теста
-        //     context.EncryptAsync(originalData, encryptedData).GetAwaiter().GetResult();
-            
-        //     // Повреждаем последний байт шифротекста, чтобы гарантированно сломать паддинг
-        //     encryptedData[encryptedData.Length - 1] ^= 0xFF; 
-
-        //     // --- ACT 2: Расшифровываем (ожидаем, что исключения не будет) ---
-        //     context.DecryptAsync(encryptedData, decryptedData).GetAwaiter().GetResult();
-
-        //     // --- ASSERT ---
-        //     // 1. Главная проверка: расшифрованные данные НЕ должны быть равны оригиналу.
-        //     // Если этот Assert провалится, значит, что-то совсем не так.
-        //     var finalDecrypted = new byte[originalData.Length];
-        //     Array.Copy(decryptedData, finalDecrypted, originalData.Length);
-            
-        //     Assert.NotEqual(originalData, finalDecrypted);
-
-        //     // 2. Дополнительная проверка: убедимся, что хотя бы начало данных расшифровалось правильно,
-        //     // а испорчен только конец. Это доказывает, что CBC работает, а паддинг - нет.
-        //     // В CBC повреждение последнего блока шифротекста портит только последний блок открытого текста.
-        //     var firstBlockOriginal = originalData.Take(16).ToArray();
-        //     var firstBlockDecrypted = decryptedData.Take(16).ToArray();
-            
-        //     Assert.Equal(firstBlockOriginal, firstBlockDecrypted);
-            
-        //     _testOutputHelper.WriteLine("DIAGNOSTIC: Test passed. This proves that decryption with invalid padding does not throw an exception and instead produces corrupt data, as expected from this test.");
-        // }
     }
 }

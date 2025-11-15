@@ -1,10 +1,27 @@
-using Xunit;
 using CryptoLib.Algorithms.Rijndael;
 using CryptoLib.Algorithms.Rijndael.Enums;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Reflection; // для BindingFlags enum
+
+/*
+1. Encrypt_Decrypt_Roundtrip_Matches_FIPS197_Vectors - Главный тест на корректность. Проверяет, что шифрование дает результат, совпадающий с официальными тестовыми векторами стандарта AES (FIPS-197), и что этот результат успешно дешифруется обратно.
+2. SetRoundKeys_WithInvalidKeySize_ShouldThrowArgumentException - Проверяет, что метод настройки ключа выбрасывает исключение при попытке использовать ключ неправильной длины.
+3. EncryptBlock_Before_SetRoundKeys_ShouldThrowInvalidOperationException - Проверяет, что нельзя зашифровать блок, предварительно не установив ключ.
+4. EncryptBlock_WithInvalidBlockSize_ShouldThrowArgumentException - Проверяет, что нельзя зашифровать блок данных, размер которого не совпадает с размером блока шифра.
+5. SBox_Constructor_WithReduciblePolynomial_ShouldThrowArgumentException - Проверяет, что конструктор S-Box (внутренний компонент) выбрасывает исключение, если ему передать математически некорректный (приводимый) полином.
+6. RijndaelCipher_Constructor_WithReduciblePolynomial_ShouldThrowArgumentException - Проверяет, что основной класс шифра также выбрасывает исключение, если попытаться создать его с некорректным полиномом.
+7. Decrypt_Matches_FIPS197_Vectors - Тест на корректность дешифрования. Берет эталонный шифротекст из стандарта и проверяет, что DecryptBlock возвращает правильный исходный текст.
+8. Encrypt_Decrypt_Roundtrip_ShouldWorkForAllSupportedSizes - Проверяет внутреннюю консистентность алгоритма для всех 9 комбинаций размеров ключа/блока, поддерживаемых Rijndael (включая нестандартные для AES).
+9. RijndaelCipher_Constructor_ShouldSetCorrectNumberOfRounds - Проверяет, что для каждой из 9 комбинаций размеров ключа/блока выбирается правильное количество раундов в соответствии со спецификацией.
+10. Encrypt_Decrypt_Roundtrip_WithCustomPolynomial_ShouldBeReversible - Проверяет, что алгоритм остается обратимым при использовании нестандартного (но валидного) неприводимого полинома.
+11. DecryptBlock_Before_SetRoundKeys_ShouldThrowInvalidOperationException - Проверяет, что нельзя расшифровать блок без предварительной установки ключа.
+12. SetRoundKeys_WithNullKey_ShouldThrowArgumentException - Проверяет корректную обработку null при установке ключа.
+13. EncryptBlock_WithNullBlock_ShouldThrowArgumentException - Проверяет корректную обработку null при шифровании блока.
+14. DecryptBlock_WithInvalidBlockSize_ShouldThrowArgumentException - Проверяет, что нельзя расшифровать блок неправильной длины.
+15. RijndaelCipher_Constructor_WithInvalidEnum_ShouldThrowException - Проверяет, что конструктор выбрасывает исключение при передаче невалидных (несуществующих) значений enum.
+16. Encrypt_Decrypt_Roundtrip_WithBoundaryValues_ShouldBeReversible - Проверяет корректность работы алгоритма на "крайних" случаях входных данных: блок из всех нулей, блок из всех единиц и блок с последовательным паттерном.
+17. Encrypt_Decrypt_Roundtrip_WithSeparateInstances_ShouldBeReversible - Проверяет, что шифрование одним экземпляром класса и дешифрование другим (но с тем же ключом) дают корректный результат, доказывая отсутствие "скрытого" состояния.
+*/
+
 
 namespace CryptoTests
 {
@@ -54,7 +71,6 @@ namespace CryptoTests
         [MemberData(nameof(Aes256TestData))]
         public void Encrypt_Decrypt_Roundtrip_Matches_FIPS197_Vectors(string keyHex, string plaintextHex, string expectedCiphertextHex)
         {
-            // Arrange
             var key = FromHexString(keyHex);
             var plaintext = FromHexString(plaintextHex);
             var expectedCiphertext = FromHexString(expectedCiphertextHex);
@@ -64,15 +80,12 @@ namespace CryptoTests
 
 
             var cipher = new RijndaelCipher(keySize, blockSize);
-
-            // Act & Assert: Encryption
             cipher.SetRoundKeys(key);
             var actualCiphertext = cipher.EncryptBlock(plaintext);
 
 
             Assert.Equal(expectedCiphertext.ToList(), actualCiphertext.ToList());
 
-            // Act & Assert: Decryption (Roundtrip)
             var decryptedText = cipher.DecryptBlock(actualCiphertext);
             Assert.Equal(plaintext.ToList(), decryptedText.ToList());
         }
@@ -81,7 +94,7 @@ namespace CryptoTests
         public void SetRoundKeys_WithInvalidKeySize_ShouldThrowArgumentException()
         {
             var cipher = new RijndaelCipher(KeySize.K128, BlockSize.B128);
-            var wrongKey = new byte[15]; // Должно быть 16
+            var wrongKey = new byte[15];
 
             Assert.Throws<ArgumentException>(() => cipher.SetRoundKeys(wrongKey));
         }
@@ -100,7 +113,7 @@ namespace CryptoTests
         {
             var cipher = new RijndaelCipher(KeySize.K128, BlockSize.B128);
             cipher.SetRoundKeys(new byte[16]);
-            var wrongBlock = new byte[15]; // Должно быть 16
+            var wrongBlock = new byte[15];
 
             Assert.Throws<ArgumentException>(() => cipher.EncryptBlock(wrongBlock));
         }
@@ -119,11 +132,9 @@ namespace CryptoTests
         [Fact]
         public void SBox_Constructor_WithReduciblePolynomial_ShouldThrowArgumentException()
         {
-            // Arrange
-            // Полином 0x01 (x^8 + 1) является приводимым, так как (x+1)^8
+
             byte reduciblePolynomial = 0x01;
 
-            // Act & Assert
             // Проверяем, что конструктор SBox выбросит исключение ArgumentException
             Assert.Throws<ArgumentException>(() => new SBox(reduciblePolynomial));
         }
@@ -131,14 +142,11 @@ namespace CryptoTests
         [Fact]
         public void RijndaelCipher_Constructor_WithReduciblePolynomial_ShouldThrowArgumentException()
         {
-            // Arrange
             // Так как RijndaelCipher внутри себя создает SBox, он должен "пробросить"
             // исключение от конструктора SBox.
             byte reduciblePolynomial = 0x01;
             var keySize = KeySize.K128;
             var blockSize = BlockSize.B128;
-
-            // Act & Assert
             Assert.Throws<ArgumentException>(() => new RijndaelCipher(keySize, blockSize, reduciblePolynomial));
         }
 
@@ -148,7 +156,7 @@ namespace CryptoTests
         [MemberData(nameof(Aes256TestData))]
         public void Decrypt_Matches_FIPS197_Vectors(string keyHex, string plaintextHex, string expectedCiphertextHex)
         {
-            // Arrange
+
             var key = FromHexString(keyHex);
             var expectedPlaintext = FromHexString(plaintextHex);
             var ciphertext = FromHexString(expectedCiphertextHex);
@@ -158,11 +166,9 @@ namespace CryptoTests
 
             var cipher = new RijndaelCipher(keySize, blockSize);
 
-            // Act
             cipher.SetRoundKeys(key);
             var actualPlaintext = cipher.DecryptBlock(ciphertext);
 
-            // Assert
             Assert.Equal(expectedPlaintext.ToList(), actualPlaintext.ToList());
         }
 
@@ -173,17 +179,15 @@ namespace CryptoTests
         [InlineData(KeySize.K192, BlockSize.B256)]
         [InlineData(KeySize.K256, BlockSize.B192)]
         [InlineData(KeySize.K256, BlockSize.B256)]
-        // Стандартные AES комбинации для полноты картины
+        // Стандартные AES
         [InlineData(KeySize.K128, BlockSize.B128)]
         [InlineData(KeySize.K192, BlockSize.B128)]
         [InlineData(KeySize.K256, BlockSize.B128)]
         public void Encrypt_Decrypt_Roundtrip_ShouldWorkForAllSupportedSizes(KeySize keySize, BlockSize blockSize)
         {
-            // Arrange
             int keySizeBytes = (int)keySize / 8;
             int blockSizeBytes = (int)blockSize / 8;
 
-            // Генерируем случайный ключ и блок нужного размера
             var key = new byte[keySizeBytes];
             var plaintext = new byte[blockSizeBytes];
             new Random().NextBytes(key);
@@ -191,22 +195,18 @@ namespace CryptoTests
 
             var cipher = new RijndaelCipher(keySize, blockSize);
 
-            // Act: Encrypt
             cipher.SetRoundKeys(key);
             var ciphertext = cipher.EncryptBlock(plaintext);
 
-            // Act: Decrypt
             // SetRoundKeys нужно вызвать снова, так как в реальном сценарии это могут быть разные экземпляры
             cipher.SetRoundKeys(key);
             var decryptedText = cipher.DecryptBlock(ciphertext);
 
-            // Assert
             // Проверяем, что после шифрования и дешифрования мы вернулись к исходному блоку
             Assert.Equal(plaintext.ToList(), decryptedText.ToList());
         }
 
         [Theory]
-        // Таблица 5 из оригинальной спецификации "The Design of Rijndael"
         // Nr = max(Nk, Nb) + 6
         // Nk = KeyWords, Nb = BlockWords
         // Nk/Nb | 4    | 6    | 8
@@ -225,18 +225,14 @@ namespace CryptoTests
         [InlineData(KeySize.K256, BlockSize.B256, 14)]
         public void RijndaelCipher_Constructor_ShouldSetCorrectNumberOfRounds(KeySize keySize, BlockSize blockSize, int expectedRounds)
         {
-            // Arrange
             var cipher = new RijndaelCipher(keySize, blockSize);
 
-            // Act
-            // Используем рефлексию, чтобы получить значение private readonly поля _rounds
             var field = typeof(RijndaelCipher).GetField("_rounds", BindingFlags.NonPublic | BindingFlags.Instance);
             if (field == null)
                 throw new InvalidOperationException("Не удалось найти приватное поле _rounds.");
 
             var actualRounds = (int)field.GetValue(cipher);
 
-            // Assert
             Assert.Equal(expectedRounds, actualRounds);
         }
 
@@ -245,7 +241,6 @@ namespace CryptoTests
         [InlineData((byte)0x8D)] // Другой валидный неприводимый полином (x^8+x^7+x^3+x^2+1)
         public void Encrypt_Decrypt_Roundtrip_WithCustomPolynomial_ShouldBeReversible(byte irreduciblePolynomial)
         {
-            // Arrange
             var keySize = KeySize.K128;
             var blockSize = BlockSize.B128;
 
@@ -257,21 +252,16 @@ namespace CryptoTests
             new Random().NextBytes(key);
             new Random().NextBytes(plaintext);
 
-            // Создаем шифр с заданным полиномом
             var cipher = new RijndaelCipher(keySize, blockSize, irreduciblePolynomial);
 
-            // Act: Encrypt
             cipher.SetRoundKeys(key);
             var ciphertext = cipher.EncryptBlock(plaintext);
 
-            // Act: Decrypt
-            // Для дешифрования нужен экземпляр с ТЕМ ЖЕ полиномом
+
             var decryptCipher = new RijndaelCipher(keySize, blockSize, irreduciblePolynomial);
             decryptCipher.SetRoundKeys(key);
             var decryptedText = decryptCipher.DecryptBlock(ciphertext);
 
-            // Assert
-            // Проверяем, что шифр остается обратимым, независимо от выбранного (валидного) полинома
             Assert.Equal(plaintext.ToList(), decryptedText.ToList());
         }
 
@@ -291,51 +281,39 @@ namespace CryptoTests
         [Fact]
         public void SetRoundKeys_WithNullKey_ShouldThrowArgumentException()
         {
-            // Arrange
             var cipher = new RijndaelCipher(KeySize.K128, BlockSize.B128);
             byte[] nullKey = null;
 
-            // Act & Assert
             Assert.Throws<ArgumentException>(() => cipher.SetRoundKeys(nullKey));
         }
 
         [Fact]
         public void EncryptBlock_WithNullBlock_ShouldThrowArgumentException()
         {
-            // Arrange
             var cipher = new RijndaelCipher(KeySize.K128, BlockSize.B128);
             cipher.SetRoundKeys(new byte[16]);
             byte[] nullBlock = null;
 
-            // Act & Assert
             Assert.Throws<ArgumentException>(() => cipher.EncryptBlock(nullBlock));
         }
 
         [Fact]
         public void DecryptBlock_WithInvalidBlockSize_ShouldThrowArgumentException()
         {
-            // Arrange
             var cipher = new RijndaelCipher(KeySize.K128, BlockSize.B128);
             cipher.SetRoundKeys(new byte[16]);
-            var wrongBlock = new byte[15]; // Должно быть 16
+            var wrongBlock = new byte[15];
 
-            // Act & Assert
             Assert.Throws<ArgumentException>(() => cipher.DecryptBlock(wrongBlock));
         }
 
         [Fact]
         public void RijndaelCipher_Constructor_WithInvalidEnum_ShouldThrowException()
         {
-            // Этот тест проверяет, что конструктор и GetNumberOfRounds имеют защиту
-            // от невалидных значений enum, если такие можно создать.
 
-            // Arrange
             KeySize invalidKeySize = (KeySize)999;
             BlockSize validBlockSize = BlockSize.B128;
 
-            // Act & Assert
-            // Мы ожидаем любое исключение, так как это нештатная ситуация.
-            // Скорее всего, это будет InvalidOperationException из GetNumberOfRounds.
             Assert.Throws<InvalidOperationException>(() => new RijndaelCipher(invalidKeySize, validBlockSize));
         }
 
@@ -345,7 +323,7 @@ namespace CryptoTests
 
         public static IEnumerable<object[]> BoundaryTestData()
         {
-            var allZeros = new byte[16]; // Заполнен нулями по умолчанию
+            var allZeros = new byte[16];
             var allOnes = Enumerable.Repeat((byte)0xFF, 16).ToArray();
             var pattern = Enumerable.Range(0, 16).Select(i => (byte)i).ToArray();
 
@@ -358,8 +336,7 @@ namespace CryptoTests
         [MemberData(nameof(BoundaryTestData))]
         public void Encrypt_Decrypt_Roundtrip_WithBoundaryValues_ShouldBeReversible(byte[] plaintext, string description)
         {
-            // Arrange
-            _ = description; // Используется xUnit для отображения имени теста
+            _ = description;
             var keySize = KeySize.K128;
             var blockSize = BlockSize.B128;
 
@@ -368,17 +345,15 @@ namespace CryptoTests
 
             var cipher = new RijndaelCipher(keySize, blockSize);
 
-            // Act
             cipher.SetRoundKeys(key);
             var ciphertext = cipher.EncryptBlock(plaintext);
             var decryptedText = cipher.DecryptBlock(ciphertext);
 
-            // Assert
             Assert.Equal(plaintext.ToList(), decryptedText.ToList());
         }
 
         #endregion
-        
+
         [Theory]
         [InlineData(KeySize.K128, BlockSize.B128)]
         [InlineData(KeySize.K192, BlockSize.B128)]
@@ -391,7 +366,6 @@ namespace CryptoTests
         [InlineData(KeySize.K256, BlockSize.B256)]
         public void Encrypt_Decrypt_Roundtrip_WithSeparateInstances_ShouldBeReversible(KeySize keySize, BlockSize blockSize)
         {
-            // Arrange
             int keySizeBytes = (int)keySize / 8;
             int blockSizeBytes = (int)blockSize / 8;
 
@@ -400,18 +374,15 @@ namespace CryptoTests
             new Random().NextBytes(key);
             new Random().NextBytes(plaintext);
 
-            // Создаем ДВА РАЗНЫХ экземпляра шифра с одинаковыми параметрами
             var encryptCipher = new RijndaelCipher(keySize, blockSize);
             var decryptCipher = new RijndaelCipher(keySize, blockSize);
 
-            // Act
             encryptCipher.SetRoundKeys(key);
             var ciphertext = encryptCipher.EncryptBlock(plaintext);
-            
+
             decryptCipher.SetRoundKeys(key);
             var decryptedText = decryptCipher.DecryptBlock(ciphertext);
 
-            // Assert
             // Проверяем, что результат, полученный одним экземпляром,
             // может быть успешно расшифрован другим.
             Assert.Equal(plaintext.ToList(), decryptedText.ToList());

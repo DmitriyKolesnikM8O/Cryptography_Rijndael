@@ -1,76 +1,67 @@
 ```
 Cryptography_Rijndael/
 │
-├── Cryptography_Rijndael.sln              # Файл всего решения
+├── Cryptography_Rijndael.sln              
 │
-├── CryptoLib/                             # Основная библиотека классов (Ядро)
-│   │
-│   ├── Interfaces/                        # КОД ИЗ ЛР №1
-│   │   └── ISymmetricCipher.cs            #   Ключевой интерфейс, который должен реализовать наш Rijndael
-│   │
-│   ├── Modes/                             # КОД ИЗ ЛР №1
-│   │   │
-│   │   ├── CipherContext.cs               #   Главный класс для управления шифрованием
-│   │   │
-│   │   ├── Enums/                         #   Перечисления для режимов и набивок
-│   │   │   ├── CipherModeType.cs
-│   │   │   └── PaddingModeType.cs
-│   │   │
-│   │   └── Implementations/               #   Готовые реализации режимов и набивок
-│   │       ├── Modes/                     #     - ECB, CBC, CTR и т.д.
-│   │       └── Paddings/                  #     - PKCS7, Zeros и т.д.
-│   │
-│   └── Algorithms/                        # Реализация специфичных алгоритмов
-│       │
-│       └── Rijndael/                      # Всё, что относится к этой лабораторной работе
-│           │
-│           ├── Enums/                      
-│           │   ├── BlockSize.cs
-│           │   └── KeySize.cs
-│           │
-│           ├── GaloisField/               # (Задание 1) Реализация математики поля Галуа
-│           │   └── GaloisFieldMath.cs
-│           │
-│           ├── RijndaelCipher.cs          # (Задание 2) Основной класс, реализующий ISymmetricCipher
-│           ├── RijndaelKeyScheduler.cs    # (Задание 2) Логика расширения ключа для Rijndael
-│           └── SBox.cs                    # (Задание 2) Логика генерации S-матриц
+├── CryptoApp/                             # ПРОЕКТ: GUI-приложение на Avalonia.
+│   ├── Assets/                            # Ресурсы приложения (иконки, изображения).
+│   ├── bin/                               # Скомпилированные сборки приложения.
+│   ├── Models/                            # Модели данных для приложения (если понадобятся).
+│   ├── obj/                               # Временные файлы компиляции.
+│   ├── testData/                          # Тестовые данные, специфичные для UI-приложения.
+│   ├── ViewModels/                        # ViewModels (логика и состояние для представлений).
+│   ├── Views/                             # Представления (AXAML-файлы, описывающие UI).
+│   │   └── App.axaml                      # Главный файл стилей и ресурсов Avalonia.
+│   ├── App.axaml.cs                       # Code-behind для App.axaml.
+│   ├── app.manifest                       # Манифест приложения для Windows.
+│   ├── CryptoApp.csproj                   # Файл проекта приложения.
+│   ├── Program.cs                         # Точка входа для запуска приложения Avalonia.
+│   └── ViewLocator.cs                     # Вспомогательный класс Avalonia для связи View и ViewModel.
 │
-├── CryptoApp/                             # GUI-приложение на Avalonia
-│   │
-│   ├── Views/                             # Представления (AXAML-разметка)
-│   │   └── MainWindow.axaml
-│   │
-│   ├── ViewModels/                        # Модели представлений (логика и состояние UI)
-│   │   ├── ViewModelBase.cs
-│   │   └── MainViewModel.cs
-│   │
-│   ├── Services/                          # Вспомогательные сервисы для UI
-│   │   └── FileDialogService.cs
-│   │
-│   ├── App.axaml                          # Файл определения приложения
-│   ├── Program.cs                         # Точка входа приложения
-│   └── CryptoApp.csproj                   # Файл проекта, зависит от CryptoLib
+├── CryptoDemo/                            # ПРОЕКТ: Консольное приложение для демонстрации.
+│   ├── bin/                               # Скомпилированные сборки.
+│   ├── Demos/                             # Классы для демонстрации конкретных заданий.
+│   │   └── Task3_FileEncryptionDemo.cs    # Скрипт, демонстрирующий шифрование файлов.
+│   ├── obj/                               # Временные файлы компиляции.
+│   ├── CryptoDemo.csproj                  # Файл проекта.
+│   └── Program.cs                         # Точка входа для запуска консольной демонстрации.
 │
-├── CryptoDemo/                            # Консольное приложение для демонстрации
+├── CryptoLib/                             # ПРОЕКТ: Основная библиотека классов с криптографической логикой.
+│   ├── Algorithms/                        # Реализации криптографических алгоритмов.
+│   │   └── Rijndael/                      # Все, что относится к алгоритму Rijndael.
+│   │       ├── Enums/                     # Перечисления, специфичные для Rijndael.
+│   │       │   ├── BlockSize.cs           #   - Размеры блока (128, 192, 256).
+│   │       │   └── KeySize.cs             #   - Размеры ключа (128, 192, 256).
+│   │       │
+│   │       ├── GaloisField/               # (Задание 1) Реализация математики поля Галуа.
+│   │       │   └── GaloisFieldMath.cs     #   - Содержит всю арифметику и факторизацию.
+│   │       │
+│   │       ├── RijndaelCipher.cs          # (Задание 2) Основной класс шифра.
+│   │       ├── RijndaelKeyScheduler.cs    # (Задание 2) Класс для расширения ключа.
+│   │       └── SBox.cs                    # (Задание 2) Класс для генерации S-матриц.
 │   │
-│   ├── Demos/                             # Классы для демонстрации отдельных заданий
-│   │   ├── Task1_GaloisFieldDemo.cs
-│   │   └── Task2_3_RijndaelDemo.cs
-│   │
-│   ├── Program.cs                         # Точка входа, меню
-│   └── CryptoDemo.csproj                  # Файл проекта, зависит от CryptoLib
+│   ├── bin/                               # Скомпилированные сборки.
+│   ├── Interfaces/                        # Общие интерфейсы (ISymmetricCipher).
+│   ├── Modes/                             # (из ЛР №1) Реализация режимов шифрования и паддинга.
+│   ├── obj/                               # Временные файлы компиляции.
+│   └── CryptoLib.csproj                   # Файл проекта.
 │
-└── CryptoTests/                           # Модульные тесты
-    │
-    ├── Rijndael/                          # Тесты для новой реализации
-    │   ├── GaloisFieldMathTests.cs
-    │   └── RijndaelCipherTests.cs         # Тесты против официальных векторов FIPS-197 (AES)
-    │
-    └── CryptoTests.csproj                 # Файл проекта, зависит от CryptoLib
+├── CryptoTests/                           # ПРОЕКТ: Модульные тесты.
+│   ├── bin/                               # Скомпилированные сборки.
+│   ├── obj/                               # Временные файлы компиляции.
+│   ├── TestData/                          # Тестовые файлы (картинки, аудио и т.д.) для `Rijndael_AdvancedTests`.
+│   ├── CryptoTests.csproj                 # Файл проекта.
+│   ├── GaloisFieldMathTests.cs            # Тесты для базовой математики GF(2^8).
+│   ├── GlobalUsings.cs                    # Глобальные using'и для тестов.
+│   ├── PolynomialFactorizationTests.cs    # Тесты для разложения полиномов (BigInteger).
+│   ├── Rijndael_AdvancedTests.cs          # Комплексные тесты шифрования реальных файлов.
+│   └── RijndaelCipherTests.cs             # Основные тесты для класса RijndaelCipher.
+│
+├── DemoOutput/                            # Папка для артефактов, создаваемых CryptoDemo.
+│
+├── checkPolinoms.py                       # Вспомогательный Python-скрипт (остается в корне).
+│
+├── DemonstrationReport.txt                # Текстовый отчет, сгенерированный CryptoDemo.
+│
+└── README.md                              # Главный файл с описанием проекта.
 ```
-
-
-TO-DO:
-- нужно добавить документацию
-- нужно переделать архитектуру
-- приложение

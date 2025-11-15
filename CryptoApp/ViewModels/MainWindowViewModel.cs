@@ -17,8 +17,7 @@ namespace CryptoApp.ViewModels
 {
     public partial class MainViewModel : ObservableObject
     {
-        // --- Свойства, привязанные к UI ---
-
+        // Свойства для UI
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(IsNotBusy))]
         private bool _isBusy;
@@ -50,13 +49,14 @@ namespace CryptoApp.ViewModels
         [ObservableProperty]
         private CryptoLib.Modes.PaddingMode _selectedPaddingMode;
 
-        // --- Команды для кнопок ---
+        // Команды для кнопок
 
         [RelayCommand]
+        [Obsolete]
         private async Task SelectSourceFile()
         {
             var dialog = new OpenFileDialog();
-            var result = await dialog.ShowAsync(new Window()); // Упрощенный вызов для Avalonia
+            var result = await dialog.ShowAsync(new Window());
             if (result != null && result.Length > 0)
             {
                 SourceFilePath = result[0];
@@ -64,6 +64,7 @@ namespace CryptoApp.ViewModels
         }
 
         [RelayCommand]
+        [Obsolete]
         private async Task SelectTargetFile()
         {
             var dialog = new SaveFileDialog();
@@ -86,7 +87,7 @@ namespace CryptoApp.ViewModels
             await RunCryptoOperation(isEncrypting: false);
         }
 
-        // --- Основная логика ---
+        // Основная логика
 
         private async Task RunCryptoOperation(bool isEncrypting)
         {
@@ -104,8 +105,6 @@ namespace CryptoApp.ViewModels
             try
             {
                 // Используем стандартный PBKDF2 для получения ключа и IV из пароля.
-                // Это гораздо надежнее, чем просто использовать байты пароля.
-                // Для простоты, соль (salt) здесь захардкожена. В реальном приложении ее нужно генерировать и сохранять.
                 var salt = Encoding.UTF8.GetBytes("somesalt123");
                 using var rfc2898 = new Rfc2898DeriveBytes(Password, salt, 10000, HashAlgorithmName.SHA256);
 
@@ -147,7 +146,7 @@ namespace CryptoApp.ViewModels
         [RelayCommand]
         private void FactorizePolynomial()
         {
-            FactorizationResult = string.Empty; // Очищаем результат
+            FactorizationResult = string.Empty;
 
             if (string.IsNullOrWhiteSpace(PolynomialToFactorString))
             {
@@ -157,7 +156,7 @@ namespace CryptoApp.ViewModels
 
             try
             {
-                // Конвертируем двоичную строку в BigInteger
+                
                 var polynomial = new BigInteger(0);
                 foreach (char c in PolynomialToFactorString)
                 {
@@ -166,7 +165,7 @@ namespace CryptoApp.ViewModels
                     else if (c != '0') throw new FormatException("Строка должна содержать только 0 и 1.");
                 }
 
-                // Вызываем наш метод из CryptoLib
+                
                 var factors = CryptoLib.Algorithms.Rijndael.GaloisField.GaloisFieldMath.FactorizePolynomial(polynomial);
 
                 if (factors.Count == 0)
@@ -189,7 +188,7 @@ namespace CryptoApp.ViewModels
             }
         }
 
-        // Вспомогательный метод для красивого вывода полинома
+        // Чисто для красоты вывода
         private string FormatPolynomial(BigInteger poly)
         {
             if (poly.IsZero) return "0";
@@ -231,16 +230,16 @@ namespace CryptoApp.ViewModels
         [ObservableProperty]
         private string _gfCalculationResult = string.Empty;
 
-        // Список для ComboBox'а, заполняется при инициализации
+        
         public List<byte> IrreduciblePolynomials { get; }
 
         [ObservableProperty]
         private byte _selectedPolynomial;
 
-        // Конструктор ViewModel для инициализации
+        
         public MainViewModel()
         {
-            // Заполняем список полиномов при старте
+        
             IrreduciblePolynomials = CryptoLib.Algorithms.Rijndael.GaloisField.GaloisFieldMath.FindAllIrreduciblePolynomials();
             // Выбираем по умолчанию стандартный полином AES
             SelectedPolynomial = 0x1B;
@@ -251,11 +250,11 @@ namespace CryptoApp.ViewModels
         {
             try
             {
-                // Парсим HEX-строки в байты
+                
                 byte operandA = Convert.ToByte(OperandAString, 16);
                 byte operandB = Convert.ToByte(OperandBString, 16);
 
-                // Вызываем методы из нашего GaloisFieldMath
+                
                 byte sum = CryptoLib.Algorithms.Rijndael.GaloisField.GaloisFieldMath.Add(operandA, operandB);
                 byte product = CryptoLib.Algorithms.Rijndael.GaloisField.GaloisFieldMath.Multiply(operandA, operandB, SelectedPolynomial);
                 byte inverseA = CryptoLib.Algorithms.Rijndael.GaloisField.GaloisFieldMath.Inverse(operandA, SelectedPolynomial);

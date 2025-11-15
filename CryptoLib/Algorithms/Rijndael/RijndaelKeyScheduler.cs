@@ -86,13 +86,13 @@ namespace CryptoLib.Algorithms.Rijndael
         /// Применяет S-Box к каждому байту 4-байтного слова (операция SubWord).
         /// </summary>
         private byte[] SubWord(byte[] word) => 
-            new[] { _sBox.SBoxTable[word[0]], _sBox.SBoxTable[word[1]], _sBox.SBoxTable[word[2]], _sBox.SBoxTable[word[3]] };
+            [_sBox.SBoxTable[word[0]], _sBox.SBoxTable[word[1]], _sBox.SBoxTable[word[2]], _sBox.SBoxTable[word[3]]];
         
         /// <summary>
         /// Выполняет циклический сдвиг байтов в слове влево: [b0,b1,b2,b3] -> [b1,b2,b3,b0] (операция RotWord).
         /// </summary>
         private byte[] RotWord(byte[] word) => 
-            new[] { word[1], word[2], word[3], word[0] };
+            [word[1], word[2], word[3], word[0]];
 
         /// <summary>
         /// Преобразует плоский массив расширенного ключа в массив раундовых ключей для удобства использования.
