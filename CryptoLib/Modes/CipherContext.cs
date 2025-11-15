@@ -776,7 +776,10 @@ namespace CryptoLib.Modes
         /// </summary>
         private byte[] RemovePadding(byte[] data)
         {
-            if (data.Length == 0 || data.Length % _blockSize != 0)
+            // if (data.Length % _blockSize != 0) {
+            //     return data;
+            // }
+            if (data.Length == 0)
                 return data;
 
             return _padding switch
@@ -826,7 +829,21 @@ namespace CryptoLib.Modes
         /// </summary>
         private byte[] RemovePKCS7Padding(byte[] data)
         {
-            if (data.Length == 0) return data;
+            if (data == null || data.Length == 0)
+            {
+                
+                throw new System.Security.Cryptography.CryptographicException("Неверный шифротекст для удаления паддинга PKCS7.");
+            }
+
+            // 1. Получаем значение последнего байта. Это предполагаемая длина паддинга.
+            byte paddingLength = data[data.Length - 1];
+
+            // 2. ВАЛИДАЦИЯ: Проверяем, что длина паддинга находится в допустимых границах.
+            // Она не может быть 0 или больше размера блока.
+            if (paddingLength <= 0 || paddingLength > _blockSize)
+            {
+                throw new System.Security.Cryptography.CryptographicException("Некорректное значение длины паддинга.");
+            }
 
             byte paddingValue = data[^1];
 
@@ -835,7 +852,7 @@ namespace CryptoLib.Modes
             for (int i = data.Length - paddingValue; i < data.Length; i++)
             {
                 if (data[i] != paddingValue)
-                    return data;
+                    throw new System.Security.Cryptography.CryptographicException("Неверные байты паддинга.");
             }
 
             byte[] result = new byte[data.Length - paddingValue];
@@ -859,15 +876,26 @@ namespace CryptoLib.Modes
         /// </summary>
         private byte[] RemoveAnsiX923Padding(byte[] data)
         {
-            if (data.Length == 0) return data;
+            if (data == null || data.Length == 0)
+            {
+                throw new System.Security.Cryptography.CryptographicException("Неверный шифротекст для удаления паддинга ANSIX923.");
+            }
+            // if (data.Length == 0) return data;
+
+            byte paddingLength = data[data.Length - 1];
+            
+            if (paddingLength <= 0 || paddingLength > _blockSize)
+            {
+                 throw new System.Security.Cryptography.CryptographicException("Некорректное значение длины паддинга.");
+            }
 
             byte paddingValue = data[^1];
-            if (paddingValue == 0 || paddingValue > data.Length) return data;
+            if (paddingValue == 0 || paddingValue > data.Length) throw new System.Security.Cryptography.CryptographicException("Некорректные данные: длина паддинга больше длины массива.");;
 
             for (int i = data.Length - paddingValue; i < data.Length - 1; i++)
             {
                 if (data[i] != 0)
-                    return data;
+                    throw new System.Security.Cryptography.CryptographicException("Неверные байты паддинга.");
             }
 
             byte[] result = new byte[data.Length - paddingValue];
@@ -899,10 +927,21 @@ namespace CryptoLib.Modes
         /// </summary>
         private byte[] RemoveIso10126Padding(byte[] data)
         {
-            if (data.Length == 0) return data;
+            if (data.Length == 0) throw new System.Security.Cryptography.CryptographicException("Неверный шифротекст для удаления паддинга ISO10126.");;
 
             byte paddingValue = data[^1];
-            if (paddingValue == 0 || paddingValue > data.Length) return data;
+            // if (paddingValue == 0 || paddingValue > data.Length) return data;
+
+            byte paddingLength = data[data.Length - 1];
+            if (paddingLength <= 0 || paddingLength > _blockSize)
+            {
+                throw new System.Security.Cryptography.CryptographicException("Некорректное значение длины паддинга.");
+            }
+
+            if (paddingLength > data.Length)
+            {
+                throw new System.Security.Cryptography.CryptographicException("Некорректные данные: длина паддинга больше длины массива.");
+            }
 
             byte[] result = new byte[data.Length - paddingValue];
             Array.Copy(data, result, result.Length);

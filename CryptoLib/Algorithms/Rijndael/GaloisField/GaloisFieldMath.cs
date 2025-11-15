@@ -98,7 +98,7 @@ namespace CryptoLib.Algorithms.Rijndael.GaloisField
             {
                 // 3. Вычисление остатка
                 int remainder = GetRemainder(p, factor);
-                Console.WriteLine($"PolynomialByte: {polynomialByte} Remainder: {remainder} , Factor: {factor}");
+                // Console.WriteLine($"PolynomialByte: {polynomialByte} Remainder: {remainder} , Factor: {factor}");
                 
                 if (remainder == 0)
                 {

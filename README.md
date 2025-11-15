@@ -71,7 +71,6 @@ Cryptography_Rijndael/
 
 
 TO-DO:
-- AdvancedTests как в DES
 - нужно добавить документацию
 - нужно переделать архитектуру
 - приложение
