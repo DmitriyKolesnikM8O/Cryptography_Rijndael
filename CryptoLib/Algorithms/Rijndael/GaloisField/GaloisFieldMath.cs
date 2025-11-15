@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Numerics;
-using System.Numerics;
 using System.Security.Cryptography; // RandomNumberGeneration
 
 namespace CryptoLib.Algorithms.Rijndael.GaloisField
@@ -20,7 +19,7 @@ namespace CryptoLib.Algorithms.Rijndael.GaloisField
         /// Умножение двух элементов в поле GF(2^8) по заданному неприводимому полиному.
         /// Это каноническая, исправленная реализация.
         /// </summary>
-        public static byte Multiply(byte a, byte b, byte module = 0x1B)
+        public static byte Multiply(byte a, byte b, byte module)
         {
             byte result = 0;
             byte hi_bit_set;

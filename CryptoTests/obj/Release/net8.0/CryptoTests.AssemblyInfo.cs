@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("CryptoTests")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+8aa170941290170a04d7ab453fd0f10d1f69feb4")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+bdd3fe5a7f48d83b50f7672eac0de222adb376b5")]
 [assembly: System.Reflection.AssemblyProductAttribute("CryptoTests")]
 [assembly: System.Reflection.AssemblyTitleAttribute("CryptoTests")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

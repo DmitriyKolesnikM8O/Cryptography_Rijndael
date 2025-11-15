@@ -11,6 +11,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using System.Numerics;
 
 namespace CryptoApp.ViewModels
 {
@@ -35,7 +36,7 @@ namespace CryptoApp.ViewModels
 
         [ObservableProperty]
         private double _progress;
-        
+
         [ObservableProperty]
         private string _statusText = "Готов к работе.";
 
@@ -107,10 +108,10 @@ namespace CryptoApp.ViewModels
                 // Для простоты, соль (salt) здесь захардкожена. В реальном приложении ее нужно генерировать и сохранять.
                 var salt = Encoding.UTF8.GetBytes("somesalt123");
                 using var rfc2898 = new Rfc2898DeriveBytes(Password, salt, 10000, HashAlgorithmName.SHA256);
-                
+
                 var key = rfc2898.GetBytes(32); // 256-битный ключ
                 var iv = rfc2898.GetBytes(16);  // 128-битный IV
-                
+
                 ISymmetricCipher rijndael = new RijndaelCipher(KeySize.K256, BlockSize.B128);
                 var context = new CipherContext(rijndael, key, SelectedCipherMode, SelectedPaddingMode, iv);
 
@@ -134,6 +135,143 @@ namespace CryptoApp.ViewModels
             finally
             {
                 IsBusy = false;
+            }
+        }
+
+        [ObservableProperty]
+        private string _polynomialToFactorString = "100100010001"; // Пример: x^11+x^8+x^4+1
+
+        [ObservableProperty]
+        private string _factorizationResult = string.Empty;
+
+        [RelayCommand]
+        private void FactorizePolynomial()
+        {
+            FactorizationResult = string.Empty; // Очищаем результат
+
+            if (string.IsNullOrWhiteSpace(PolynomialToFactorString))
+            {
+                FactorizationResult = "Ошибка: введите полином.";
+                return;
+            }
+
+            try
+            {
+                // Конвертируем двоичную строку в BigInteger
+                var polynomial = new BigInteger(0);
+                foreach (char c in PolynomialToFactorString)
+                {
+                    polynomial <<= 1;
+                    if (c == '1') polynomial |= 1;
+                    else if (c != '0') throw new FormatException("Строка должна содержать только 0 и 1.");
+                }
+
+                // Вызываем наш метод из CryptoLib
+                var factors = CryptoLib.Algorithms.Rijndael.GaloisField.GaloisFieldMath.FactorizePolynomial(polynomial);
+
+                if (factors.Count == 0)
+                {
+                    FactorizationResult = "Полином не имеет множителей (или равен 0/1).";
+                    return;
+                }
+
+                var resultBuilder = new StringBuilder();
+                resultBuilder.AppendLine("Найденные неприводимые множители:");
+                foreach (var factor in factors)
+                {
+                    resultBuilder.AppendLine($"  -> {FormatPolynomial(factor.Key)} (степень: {factor.Value})");
+                }
+                FactorizationResult = resultBuilder.ToString();
+            }
+            catch (Exception ex)
+            {
+                FactorizationResult = $"Произошла ошибка: {ex.Message}";
+            }
+        }
+
+        // Вспомогательный метод для красивого вывода полинома
+        private string FormatPolynomial(BigInteger poly)
+        {
+            if (poly.IsZero) return "0";
+            if (poly == 1) return "1";
+
+            var sb = new StringBuilder();
+            for (int i = (int)poly.GetBitLength() - 1; i >= 0; i--)
+            {
+                if ((poly & (BigInteger.One << i)) != 0)
+                {
+                    if (sb.Length > 0)
+                    {
+                        sb.Append(" + ");
+                    }
+
+                    if (i == 0)
+                    {
+                        sb.Append("1");
+                    }
+                    else if (i == 1)
+                    {
+                        sb.Append("x");
+                    }
+                    else
+                    {
+                        sb.Append($"x^{i}");
+                    }
+                }
+            }
+            return sb.ToString();
+        }
+        
+        [ObservableProperty]
+        private string _operandAString = "53";
+
+        [ObservableProperty]
+        private string _operandBString = "CA";
+
+        [ObservableProperty]
+        private string _gfCalculationResult = string.Empty;
+
+        // Список для ComboBox'а, заполняется при инициализации
+        public List<byte> IrreduciblePolynomials { get; }
+
+        [ObservableProperty]
+        private byte _selectedPolynomial;
+
+        // Конструктор ViewModel для инициализации
+        public MainViewModel()
+        {
+            // Заполняем список полиномов при старте
+            IrreduciblePolynomials = CryptoLib.Algorithms.Rijndael.GaloisField.GaloisFieldMath.FindAllIrreduciblePolynomials();
+            // Выбираем по умолчанию стандартный полином AES
+            SelectedPolynomial = 0x1B;
+        }
+
+        [RelayCommand]
+        private void CalculateGf()
+        {
+            try
+            {
+                // Парсим HEX-строки в байты
+                byte operandA = Convert.ToByte(OperandAString, 16);
+                byte operandB = Convert.ToByte(OperandBString, 16);
+
+                // Вызываем методы из нашего GaloisFieldMath
+                byte sum = CryptoLib.Algorithms.Rijndael.GaloisField.GaloisFieldMath.Add(operandA, operandB);
+                byte product = CryptoLib.Algorithms.Rijndael.GaloisField.GaloisFieldMath.Multiply(operandA, operandB, SelectedPolynomial);
+                byte inverseA = CryptoLib.Algorithms.Rijndael.GaloisField.GaloisFieldMath.Inverse(operandA, SelectedPolynomial);
+                byte inverseB = CryptoLib.Algorithms.Rijndael.GaloisField.GaloisFieldMath.Inverse(operandB, SelectedPolynomial);
+
+                var resultBuilder = new StringBuilder();
+                resultBuilder.AppendLine($"A + B       = 0x{sum:X2}");
+                resultBuilder.AppendLine($"A * B (mod 0x{SelectedPolynomial:X2}) = 0x{product:X2}");
+                resultBuilder.AppendLine($"Inverse(A)  = 0x{inverseA:X2}");
+                resultBuilder.AppendLine($"Inverse(B)  = 0x{inverseB:X2}");
+
+                GfCalculationResult = resultBuilder.ToString();
+            }
+            catch (Exception ex)
+            {
+                GfCalculationResult = $"Ошибка: {ex.Message}. Вводите байты в HEX-формате (например, FF, 0A, 1B).";
             }
         }
     }

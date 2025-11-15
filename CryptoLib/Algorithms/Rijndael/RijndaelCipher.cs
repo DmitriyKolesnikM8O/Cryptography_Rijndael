@@ -148,7 +148,7 @@ namespace CryptoLib.Algorithms.Rijndael
             }
 
             throw new InvalidOperationException("Unsupported key/block size combination for determining number of rounds.");
-            
+
         }
 
         #region Private Helper Methods for Encryption
@@ -356,6 +356,8 @@ namespace CryptoLib.Algorithms.Rijndael
         {
             return _roundKeys;
         }
+        
+        
     }
     
     
