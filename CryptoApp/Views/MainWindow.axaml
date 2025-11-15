@@ -1,0 +1,63 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:CryptoApp.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="450"
+        x:Class="CryptoApp.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Icon="/Assets/avalonia-logo.ico"
+        Title="Rijndael File Encryptor"
+        Width="600" Height="450"
+        WindowStartupLocation="CenterScreen">
+
+    <Design.DataContext>
+        <!-- Этот DataContext используется только для превью в дизайнере -->
+        <vm:MainViewModel />
+    </Design.DataContext>
+
+    <Grid RowDefinitions="Auto,*,Auto" Margin="15">
+        <!-- #1. ОСНОВНАЯ ПАНЕЛЬ НАСТРОЕК -->
+        <StackPanel Grid.Row="0" Spacing="10">
+            <!-- Секция выбора файлов -->
+            <TextBlock Text="1. Выбор файлов" FontWeight="Bold"/>
+            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" Margin="0,5,0,0">
+                <TextBlock Text="Исходный файл:" VerticalAlignment="Center"/>
+                <TextBox Grid.Column="0" Grid.Row="1" Text="{Binding SourceFilePath}" IsReadOnly="True" Margin="0,0,10,0"/>
+                <Button Grid.Column="1" Grid.Row="1" Content="Выбрать..." Command="{Binding SelectSourceFileCommand}"/>
+            </Grid>
+            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto" Margin="0,5,0,0">
+                <TextBlock Text="Файл для результата:" VerticalAlignment="Center"/>
+                <TextBox Grid.Column="0" Grid.Row="1" Text="{Binding TargetFilePath}" IsReadOnly="True" Margin="0,0,10,0"/>
+                <Button Grid.Column="1" Grid.Row="1" Content="Выбрать..." Command="{Binding SelectTargetFileCommand}"/>
+            </Grid>
+
+            <!-- Секция параметров шифрования -->
+            <TextBlock Text="2. Параметры шифрования" FontWeight="Bold" Margin="0,15,0,0"/>
+            <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto" Margin="0,5,0,0" ColumnSpacing="10" RowSpacing="5">
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Пароль:" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding Password}"/>
+
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="Режим шифрования:" VerticalAlignment="Center"/>
+                <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding CipherModes}" SelectedItem="{Binding SelectedCipherMode}"/>
+                
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="Режим паддинга:" VerticalAlignment="Center"/>
+                <ComboBox Grid.Row="2" Grid.Column="1" ItemsSource="{Binding PaddingModes}" SelectedItem="{Binding SelectedPaddingMode}"/>
+            </Grid>
+        </StackPanel>
+
+        <!-- #2. ПАНЕЛЬ УПРАВЛЕНИЯ -->
+        <StackPanel Grid.Row="1" Spacing="10" HorizontalAlignment="Center" VerticalAlignment="Center" Orientation="Horizontal">
+            <Button Content="Зашифровать" Command="{Binding EncryptCommand}" IsEnabled="{Binding IsNotBusy}"
+                    Background="ForestGreen" Foreground="White" Padding="20,10"/>
+            <Button Content="Расшифровать" Command="{Binding DecryptCommand}" IsEnabled="{Binding IsNotBusy}"
+                    Background="Crimson" Foreground="White" Padding="20,10"/>
+        </StackPanel>
+        
+        <!-- #3. ПАНЕЛЬ СТАТУСА -->
+        <StackPanel Grid.Row="2" Spacing="5" VerticalAlignment="Bottom">
+            <ProgressBar Value="{Binding Progress}" Minimum="0" Maximum="100" IsIndeterminate="{Binding IsBusy}"/>
+            <TextBlock Text="{Binding StatusText}" HorizontalAlignment="Center"/>
+        </StackPanel>
+    </Grid>
+</Window>

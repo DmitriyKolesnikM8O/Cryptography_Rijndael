@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CryptoTests", "CryptoTests\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CryptoDemo", "CryptoDemo\CryptoDemo.csproj", "{710AEACC-44AC-4CA5-A268-5DE528C7EAF5}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CryptoApp", "CryptoApp\CryptoApp.csproj", "{03618154-BDB1-4D08-B08F-1C3133237ADB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -30,5 +32,9 @@ Global
 		{710AEACC-44AC-4CA5-A268-5DE528C7EAF5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{710AEACC-44AC-4CA5-A268-5DE528C7EAF5}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{710AEACC-44AC-4CA5-A268-5DE528C7EAF5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{03618154-BDB1-4D08-B08F-1C3133237ADB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{03618154-BDB1-4D08-B08F-1C3133237ADB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{03618154-BDB1-4D08-B08F-1C3133237ADB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{03618154-BDB1-4D08-B08F-1C3133237ADB}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
